@@ -4,6 +4,8 @@
 
 int main(int argc, char *argv[])
 {
+  eval_tests();
+  return 0;
   // TODO(jg): remove
   printf("Entered main in mysh.c\n");
 
