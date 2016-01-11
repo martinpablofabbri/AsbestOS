@@ -1,8 +1,10 @@
 #include "eval.h"
 
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -15,9 +17,15 @@
  * Returns -1 on error
  */
 int setup_first_pipe (Command *c) {
-  // TODO(keegan): Make this one end of a pipe istead of stdin
-  // TODO(keegan): handle error case in dup
-  return dup(STDIN_FILENO);
+  int fd;
+  if (c->input) {
+    fd = open(c->input, O_RDONLY);
+    // TODO(keegan): handle error case
+  } else {
+    // TODO(keegan): handle error case in dup
+    fd = dup(STDIN_FILENO);
+  }
+  return fd;
 }
 
 /**
@@ -28,7 +36,14 @@ int setup_first_pipe (Command *c) {
  */
 int setup_last_pipe (Command *c) {
   // TODO(keegan): Handle dup error case
-  return dup(STDOUT_FILENO);
+  int fd;
+  if (c->output) {
+    fd = open(c->output, O_WRONLY | O_CREAT);
+    // TODO(keegan): handle error case
+  } else {
+    fd = dup(STDOUT_FILENO);
+  }
+  return fd;
 }
 
 /**
@@ -124,11 +139,12 @@ void eval_tests () {
   Command c[2];
   c[0].argc = 2;
   char **argv = (char **)malloc(sizeof(char*)*(c[0].argc + 1));
-  argv[0] = "ls";
-  argv[1] = "-a";
+  argv[0] = "grep";
+  argv[1] = "lol";
   argv[2] = NULL;
   c[0].argv = argv;
-  c[0].input = c[0].output = c[0].error = NULL;
+  c[0].input = "foo.txt";
+  c[0].output = c[0].error = NULL;
   c[0].is_builtin = false;
 
   c[1].argc = 1;
@@ -137,6 +153,7 @@ void eval_tests () {
   argv[1] = NULL;
   c[1].argv = argv;
   c[1].input = c[1].output = c[1].error = NULL;
+  c[1].output = "bar.txt";
   c[1].is_builtin = false;
 
   cv.size = 2;
