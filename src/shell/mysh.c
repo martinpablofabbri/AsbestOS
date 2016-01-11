@@ -7,6 +7,8 @@
 
 int main(int argc, char *argv[])
 {
+  eval_tests();
+  return 0;
   // Shell read-evaluate loop
   for (;;) {
     // Get current working directory for command prompt
