@@ -13,6 +13,9 @@ typedef struct {
   int input;
   int output;
   int error;
+  // Sometimes the child process gets an
+  // extra fd it has to close
+  int extra_fd;
   int pid;
 } cmd_exec_info;
 

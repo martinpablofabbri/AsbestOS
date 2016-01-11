@@ -75,7 +75,13 @@ void start_execution (cmd_exec_info *c) {
     dup2(c->input, STDIN_FILENO);
     dup2(c->output, STDOUT_FILENO);
     dup2(c->error, STDERR_FILENO);
-    // TODO(keegan): remove the file descriptors we don't need
+    // TODO(keegan): handle error case
+    close(c->input);
+    close(c->output);
+    close(c->error);
+    if (c->extra_fd != -1) {
+      close(c->extra_fd);
+    }
 
     // execvp the specified function
     char **argv = c->cmd->argv;
@@ -111,12 +117,14 @@ void eval(Command_vec cv) {
 	// TODO(keegan): handle error
       }
       c.output = bridge_pipe_fd[1];
+      c.extra_fd = bridge_pipe_fd[0];
       input_pipe_fd = bridge_pipe_fd[0];
     } else {
       // This is the last command
       int final_stream_fd = setup_last_pipe(command);
       // TODO(keegan): handle error
       c.output = final_stream_fd;
+      c.extra_fd = -1;
     }
     c.error = dup(STDERR_FILENO);
     // TODO(keegan): handle error
