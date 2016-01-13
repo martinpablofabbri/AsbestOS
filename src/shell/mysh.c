@@ -7,9 +7,20 @@
 
 int main(int argc, char *argv[])
 {
+  // Shell read-evaluate loop
   for (;;) {
+    // Get current working directory for command prompt
     char *cwd = getcwd(NULL, 0);
+    // Handle getcwd error.
+    if (cwd == NULL) {
+      fprintf(stderr, "getcwd() error.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    // Print command prompt
     printf("%s:%s>", getlogin(), cwd);
+
+    // Read user input and evaluate commands
     eval(read_commands());
 
     free(cwd);
