@@ -32,11 +32,20 @@ Command_vec* read_commands(char* string) {
   {
 
     // Read in word
-    while (string[i] != ' ' &&
-	   string[i] != '\0' && 
-	   string[i] != '|' &&
-	   string[i] != '<' &&
-	   string[i] != '>') {
+    int reading_quoted = 0;
+    if (string[i] == '"') {
+      reading_quoted = 1;
+      sizeWord ++;
+      i++;
+    }
+
+    while (!(reading_quoted == 0 && (
+				     string[i] == ' ' ||
+				     string[i] == '\0' ||
+				     string[i] == '|' ||
+				     string[i] == '<' ||
+				     string[i] == '>')) &&
+	   !(string[i] == '"' && reading_quoted == 1)) {
       i++;
     }
 
@@ -44,6 +53,9 @@ Command_vec* read_commands(char* string) {
     tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
     memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
     tmpBuffer[i - sizeWord] = '\0';
+    if (reading_quoted == 1) {
+      i++;
+    }
     sizeWord = i;
     numWords++;
     cmd->argv = (char**) realloc(cmd->argv, sizeof(char*) * (numWords + 1));
