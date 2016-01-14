@@ -60,6 +60,7 @@ void print_history () {
   unsigned ind = 0;
   while(all[ind] != NULL) {
     printf("%s\n",all[ind]->line);
+    ind++;
   }
 }
 
