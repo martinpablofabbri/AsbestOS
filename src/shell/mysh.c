@@ -7,8 +7,6 @@
 
 int main(int argc, char *argv[])
 {
-  eval_tests();
-  return 0;
   // Shell read-evaluate loop
   for (;;) {
     // Get current working directory for command prompt
@@ -23,7 +21,9 @@ int main(int argc, char *argv[])
     printf("%s:%s>", getlogin(), cwd);
 
     // Read user input and evaluate commands
-    eval(read_commands());
+    Command_vec *commands = read_commands();
+    eval(commands);
+    free_command_vec(commands);
 
     free(cwd);
     // TODO(jg): remove when we can input and execute an exit command

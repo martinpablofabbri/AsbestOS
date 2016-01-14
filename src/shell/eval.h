@@ -19,7 +19,6 @@ typedef struct {
   int pid;
 } cmd_exec_info;
 
-void eval(Command_vec cv);
-void eval_tests();
+void eval(Command_vec* cv);
 
 #endif  // SRC_SHELL_EVAL_H_

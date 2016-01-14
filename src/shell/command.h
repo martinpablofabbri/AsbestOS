@@ -31,4 +31,6 @@ typedef struct Command_vec_struct {
   struct Command_vec_struct *next;
 } Command_vec;
 
+void free_command_vec (Command_vec *cv);
+
 #endif  // SRC_SHELL_COMMAND_H_

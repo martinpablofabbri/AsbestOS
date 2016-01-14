@@ -126,16 +126,17 @@ int start_execution (cmd_exec_info *c) {
 }
 
 /** Evaluate all commands in Command_vec **/
-void eval(Command_vec cv) {
+void eval(Command_vec* cv) {
   /* All commands are connected with pipes.
      The first command is hooked up to either
      STDIN or something as specified in the command.
      The last command is hooked up to either
      STDOUT or something as specified in the command.
   */
-  // TODO(keegan): handle case where there are no commands?
+  if (cv == NULL)
+    return;
 
-  Command_vec *cur = &cv;
+  Command_vec *cur = cv;
   int bridge_pipe_fd[2];
   int input_pipe_fd = setup_first_pipe (cur->command);
   if (input_pipe_fd == -1) {
@@ -224,37 +225,4 @@ void eval(Command_vec cv) {
       fprintf(stderr, "%s\n", strerror(errno));
     }
   }
-}
-
-void eval_tests () {
-  // Runs tests related to the evaluator
-
-  // Set up a command vector
-  Command_vec cv1, cv2;
-  Command c[2];
-  c[0].argc = 2;
-  char **argv = (char **)malloc(sizeof(char*)*(c[0].argc + 1));
-  argv[0] = "grep";
-  argv[1] = "lol";
-  argv[2] = NULL;
-  c[0].argv = argv;
-  c[0].input = "foo.txt";
-  c[0].output = c[0].error = NULL;
-  c[0].is_builtin = false;
-
-  c[1].argc = 1;
-  argv = (char **)malloc(sizeof(char*)*(c[1].argc + 1));
-  argv[0] = "sort";
-  argv[1] = NULL;
-  c[1].argv = argv;
-  c[1].input = c[1].output = c[1].error = NULL;
-  //c[1].output = "bar.txt";
-  c[1].is_builtin = false;
-
-  cv1.command = &c[0];
-  cv2.command = &c[1];
-  cv1.next = &cv2;
-  cv2.next = NULL;
-
-  eval(cv1);
 }
