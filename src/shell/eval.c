@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -40,6 +42,9 @@ int setup_first_pipe (Command *c) {
 int setup_last_pipe (Command *c) {
   int fd;
   if (c->output) {
+    if (unlink(c->output) == -1 && errno != ENOENT) {
+      perror("Unable to remove existing output");
+    }
     fd = open(c->output, O_WRONLY | O_CREAT);
   } else {
     fd = dup(STDOUT_FILENO);
@@ -48,6 +53,56 @@ int setup_last_pipe (Command *c) {
     perror("Unable to setup output");
   }
   return fd;
+}
+
+/**
+ * Builtin to print the command history
+ */
+void print_history () {
+  HIST_ENTRY **all = history_list();
+  unsigned ind = 0;
+  while(all[ind] != NULL) {
+    printf("%s\n",all[ind]->line);
+    ind++;
+  }
+}
+
+/**
+ * Takes a list of commands as input. If
+ * The first command is a built-in command,
+ * run it and exit. Assume we will not be given
+ * an input line like "cd / | pwd" as it's
+ * unclear what this should even do.
+ *
+ * Returns 0 if a built-in command was executed.
+ * Otherwise, return -1.
+ */
+int run_builtin (Command_vec* cv) {
+  char *cmd_str = cv->command->argv[0];
+  if ((strcmp(cmd_str, "cd") == 0) || (strcmp(cmd_str, "chdir") == 0)) {
+    // Changing the directory
+    char *path = cv->command->argv[1];
+    if (path == NULL) {
+      // Change to the home directory
+      path = getenv("HOME");
+      if (path == NULL) {
+	fprintf(stderr, "Home directory not found\n");
+	return 0;
+      }
+    }
+    // Change to the specified directory
+    if (chdir(path) == -1) {
+      perror("Failed to change directories");
+    }
+    return 0;
+  } else if (strcmp(cmd_str, "exit") == 0) {
+    exit(0);
+  } else if (strcmp(cmd_str, "history") == 0) {
+    print_history();
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
 /**
@@ -127,6 +182,9 @@ void eval(Command_vec* cv) {
      STDOUT or something as specified in the command.
   */
   if (cv == NULL)
+    return;
+
+  if (run_builtin(cv) == 0)
     return;
 
   Command_vec *cur = cv;
