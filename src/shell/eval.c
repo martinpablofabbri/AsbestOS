@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -51,6 +53,13 @@ int setup_last_pipe (Command *c) {
 }
 
 /**
+ * Builtin to print the command history
+ */
+void print_history () {
+  //history_list();
+}
+
+/**
  * Takes a list of commands as input. If
  * The first command is a built-in command,
  * run it and exit. Assume we will not be given
@@ -80,6 +89,9 @@ int run_builtin (Command_vec* cv) {
     return 0;
   } else if (strcmp(cmd_str, "exit") == 0) {
     exit(0);
+  } else if (strcmp(cmd_str, "history") == 0) {
+    print_history();
+    return 0;
   } else {
     return -1;
   }
