@@ -7,8 +7,6 @@
 #include "read.h"
 #include "eval.h"
 
-#define PROMPT_SIZE 1024
-
 /** Makes a prompt cstring. Caller must free it **/
 char * get_prompt() {
   size_t login_size = strlen(getlogin());
