@@ -79,7 +79,7 @@ void print_history () {
  */
 int run_builtin (Command_vec* cv) {
   char *cmd_str = cv->command->argv[0];
-  if (strcmp(cmd_str, "cd") == 0) {
+  if ((strcmp(cmd_str, "cd") == 0) || (strcmp(cmd_str, "chdir") == 0)) {
     // Changing the directory
     char *path = cv->command->argv[1];
     if (path == NULL) {
