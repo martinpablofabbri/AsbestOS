@@ -51,6 +51,41 @@ int setup_last_pipe (Command *c) {
 }
 
 /**
+ * Takes a list of commands as input. If
+ * The first command is a built-in command,
+ * run it and exit. Assume we will not be given
+ * an input line like "cd / | pwd" as it's
+ * unclear what this should even do.
+ *
+ * Returns 0 if a built-in command was executed.
+ * Otherwise, return -1.
+ */
+int run_builtin (Command_vec* cv) {
+  char *cmd_str = cv->command->argv[0];
+  if (strcmp(cmd_str, "cd") == 0) {
+    // Changing the directory
+    char *path = cv->command->argv[1];
+    if (path == NULL) {
+      // Change to the home directory
+      path = getenv("HOME");
+      if (path == NULL) {
+	fprintf(stderr, "Home directory not found\n");
+	return 0;
+      }
+    }
+    // Change to the specified directory
+    if (chdir(path) == -1) {
+      perror("Failed to change directories");
+    }
+    return 0;
+  } else if (strcmp(cmd_str, "exit") == 0) {
+    exit(0);
+  } else {
+    return -1;
+  }
+}
+
+/**
  * Begin execution of the specified command.
  * Fills in the PID of the child process in the struct.
  * 
@@ -113,7 +148,6 @@ int start_execution (cmd_exec_info *c) {
     char **argv = c->cmd->argv;
     execvp(argv[0], argv);
     perror("Error calling execvp");
-
     exit(-1);
   }
 }
@@ -127,6 +161,9 @@ void eval(Command_vec* cv) {
      STDOUT or something as specified in the command.
   */
   if (cv == NULL)
+    return;
+
+  if (run_builtin(cv) == 0)
     return;
 
   Command_vec *cur = cv;
