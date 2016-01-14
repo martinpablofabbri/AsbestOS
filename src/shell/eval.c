@@ -40,6 +40,9 @@ int setup_first_pipe (Command *c) {
 int setup_last_pipe (Command *c) {
   int fd;
   if (c->output) {
+    if (unlink(c->output) == -1 && errno != ENOENT) {
+      perror("Unable to remove existing output");
+    }
     fd = open(c->output, O_WRONLY | O_CREAT);
   } else {
     fd = dup(STDOUT_FILENO);
