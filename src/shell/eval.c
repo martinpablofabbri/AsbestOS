@@ -92,26 +92,24 @@ void start_execution (cmd_exec_info *c) {
 
 /** Evaluate all commands in Command_vec **/
 void eval(Command_vec cv) {
-  unsigned i;
   /* All commands are connected with pipes.
      The first command is hooked up to either
      STDIN or something as specified in the command.
      The last command is hooked up to either
      STDOUT or something as specified in the command.
   */
-  if (cv.size == 0) {
-    return;
-  }
+  // TODO(keegan): handle case where there are no commands?
 
-  int input_pipe_fd = setup_first_pipe (&cv.commands[0]);
+  Command_vec *cur = &cv;
+  int input_pipe_fd = setup_first_pipe (cur->command);
   int bridge_pipe_fd[2];
   // TODO(keegan): handle errors here
-  for (i=0; i < cv.size; i++) {
-    Command *command = &cv.commands[i];
+  while (cur != NULL) {
+    Command *command = cur->command;
     cmd_exec_info c;
     c.cmd = command;
     c.input = input_pipe_fd;
-    if (i < cv.size - 1) {
+    if (cur->next != NULL) {
       // Make pipe that will bridge between commands
       if (pipe(bridge_pipe_fd) != 0) {
 	// TODO(keegan): handle error
@@ -131,11 +129,15 @@ void eval(Command_vec cv) {
 
     start_execution(&c);
     // TODO(keegan): Add error handling for start_command
+
+    cur = cur->next;
   }
 
-  for (i=0; i < cv.size; i++) {
+  cur = &cv;
+  while (cur != NULL) {
     // TODO(keegan): Add error handling
     wait(NULL);
+    cur = cur->next;
   }
 }
 
@@ -143,7 +145,7 @@ void eval_tests () {
   // Runs tests related to the evaluator
 
   // Set up a command vector
-  Command_vec cv;
+  Command_vec cv1, cv2;
   Command c[2];
   c[0].argc = 2;
   char **argv = (char **)malloc(sizeof(char*)*(c[0].argc + 1));
@@ -161,11 +163,13 @@ void eval_tests () {
   argv[1] = NULL;
   c[1].argv = argv;
   c[1].input = c[1].output = c[1].error = NULL;
-  c[1].output = "bar.txt";
+  //c[1].output = "bar.txt";
   c[1].is_builtin = false;
 
-  cv.size = 2;
-  cv.commands = c;
+  cv1.command = &c[0];
+  cv2.command = &c[1];
+  cv1.next = &cv2;
+  cv2.next = NULL;
 
-  eval(cv);
+  eval(cv1);
 }
