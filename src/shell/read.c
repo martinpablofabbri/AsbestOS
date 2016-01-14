@@ -70,13 +70,15 @@ Command_vec* read_commands(char* string) {
       cmd->input = NULL;
       cmd->output = NULL;
       cmd->error = NULL;
+      numWords = 0;
+      cmd->argv = (char**) malloc(sizeof(char*) * (numWords + 1));
+
       nextCV = nextCV->next;
       // Consume |
       sizeWord++; i++;
       while (string[sizeWord] == ' ') {sizeWord++;i++;}
       if (string[i] == '\0')
 	break;
-      numWords = 0;
     }
 
     if (string[i] == '\0') {
