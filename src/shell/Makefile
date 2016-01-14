@@ -5,7 +5,7 @@ OBJS = mysh.o read.o eval.o command.o
 all: mysh
 
 mysh: $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ -lreadline $(LDFLAGS)
 
 clean: 
 	rm -f *.o *~ mysh
