@@ -28,7 +28,11 @@ Command_vec* read_commands(char* string) {
   {
 
     // Read in word
-    while (string[i] != ' ' && string[i] != '\0' && string[i] != '|') {
+    while (string[i] != ' ' &&
+	   string[i] != '\0' && 
+	   string[i] != '|' &&
+	   string[i] != '<' &&
+	   string[i] != '>') {
       i++;
     }
 
@@ -45,9 +49,49 @@ Command_vec* read_commands(char* string) {
 
     // sizeWord is the idx of first character of the next token
     // chomp whitespace
-
-    // If there's more to the command
     while (string[sizeWord] == ' ') {sizeWord++;i++;}
+
+    if (string[i] == '<') {
+      // consume following whitespace
+      sizeWord++; i++;
+      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+
+      // Read to end of filename
+      while (string[i] != ' ' &&
+	     string[i] != '\0' && 
+	     string[i] != '|' &&
+	     string[i] != '<' &&
+	     string[i] != '>') {
+	i++;
+      }
+      // Handle filename
+      tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
+      memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
+      tmpBuffer[i - sizeWord] = '\0';
+      sizeWord = i;
+      cmd->input = tmpBuffer;
+      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+    } else if (string[i] == '>') {
+      // consume following whitespace
+      sizeWord++; i++;
+      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+
+      // Read to end of filename
+      while (string[i] != ' ' &&
+	     string[i] != '\0' && 
+	     string[i] != '|' &&
+	     string[i] != '<' &&
+	     string[i] != '>') {
+	i++;
+      }
+      // Handle filename
+      tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
+      memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
+      tmpBuffer[i - sizeWord] = '\0';
+      sizeWord = i;
+      cmd->output = tmpBuffer;
+      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+    }
 
     // If we need another command
     if (string[i] == '|') {
@@ -86,6 +130,7 @@ Command_vec* read_commands(char* string) {
       nextCV->next = NULL;
       break;
     }
+
   }
   return cv;
 }
