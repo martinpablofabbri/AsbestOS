@@ -5,10 +5,10 @@
 #include "command.h"
 
 Command_vec* read_commands(char* string) {
-  // TODO(jg): remove
-  printf("In read_commands()\n");
 
   Command_vec *cv = (Command_vec *) malloc(sizeof(Command_vec*));
+
+
   // Set up cv
   // return cv;
 
