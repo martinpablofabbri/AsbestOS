@@ -25,10 +25,12 @@ typedef struct {
   bool is_builtin;
 } Command;
 
-/** Command_vec **/
-typedef struct {
-  int size;
-  Command *commands;
+/** Command_vec linked list **/
+typedef struct Command_vec_struct {
+  Command *command;
+  struct Command_vec_struct *next;
 } Command_vec;
+
+void free_command_vec (Command_vec *cv);
 
 #endif  // SRC_SHELL_COMMAND_H_

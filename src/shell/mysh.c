@@ -62,12 +62,12 @@ rl_gets ()
 
 int main(int argc, char *argv[])
 {
-  static char *line_read = (char *) NULL;
-  
   // Shell read-evaluate loop
   for (;;) {
     // Read user input and evaluate commands
-    eval(read_commands(rl_gets()));
+    Command_vec *commands = read_commands(rl_gets());
+    eval(commands);
+    free_command_vec(commands);
   }
   printf("\n");
   return 0;
