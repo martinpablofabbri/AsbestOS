@@ -26,7 +26,7 @@ int setup_first_pipe (Command *c) {
     fd = dup(STDIN_FILENO);
   }
   if (fd == -1) {
-    fprintf(stderr, "Unable to set up input. Reason: %s\n", strerror(errno));
+    perror("Unable to set up input");
   }
   return fd;
 }
@@ -45,7 +45,7 @@ int setup_last_pipe (Command *c) {
     fd = dup(STDOUT_FILENO);
   }
   if (fd == -1) {
-    fprintf(stderr, "Unable to setup output. Reason: %s\n", strerror(errno));
+    perror("Unable to setup output");
   }
   return fd;
 }
@@ -59,8 +59,7 @@ int setup_last_pipe (Command *c) {
 int start_execution (cmd_exec_info *c) {
   int p = fork();
   if (p == -1) {
-    fprintf(stderr, "There was a problem forking the main shell:\n");
-    fprintf(stderr, "%s\n", strerror(errno));
+    perror("There was a problem forking the main shell");
     return -1;
   } else if (p) {
     // Parent
@@ -69,13 +68,13 @@ int start_execution (cmd_exec_info *c) {
     // If we ever get an error, then report it but do not
     // halt.
     if (close(c->input) != 0) {
-      fprintf(stderr, "Problem closing input stream: %s\n", strerror(errno));
+      perror("Problem closing input stream");
     }
     if (close(c->output) != 0) {
-      fprintf(stderr, "Problem closing output stream: %s\n", strerror(errno));
+      perror("Problem closing output stream");
     }
     if (close(c->error) != 0) {
-      fprintf(stderr, "Problem closing error stream: %s\n", strerror(errno));
+      perror("Problem closing error stream");
     }
     return p;
   } else {
@@ -83,44 +82,38 @@ int start_execution (cmd_exec_info *c) {
     // Tie together input, output, and stderr
     // If any has an error, die.
     if (dup2(c->input, STDIN_FILENO) == -1) {
-      fprintf(stderr, "Error duplicating command input.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error duplicating command input");
       exit(-1);
     }
     if (dup2(c->output, STDOUT_FILENO) == -1) {
-      fprintf(stderr, "Error duplicating command output.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error duplicating command output");
       exit(-1);
     }
     if (dup2(c->error, STDERR_FILENO) == -1) {
-      fprintf(stderr, "Error duplicating command error stream.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error duplicating command error stream");
       exit(-1);
     }
 
     if(close(c->input) == -1) {
-      fprintf(stderr, "Error cleaning up file descriptors in child.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error cleaning up file descriptors in child");
     }
     if(close(c->output) == -1) {
-      fprintf(stderr, "Error cleaning up file descriptors in child.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error cleaning up file descriptors in child");
     }
     if(close(c->error) == -1) {
-      fprintf(stderr, "Error cleaning up file descriptors in child.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error cleaning up file descriptors in child");
     }
     if (c->extra_fd != -1) {
       if(close(c->extra_fd) == -1) {
-	fprintf(stderr, "Error cleaning up file descriptors in child.\n");
-	fprintf(stderr, "%s\n", strerror(errno));
+	perror("Error cleaning up file descriptors in child");
       }
     }
 
     // execvp the specified function
     char **argv = c->cmd->argv;
     execvp(argv[0], argv);
-    fprintf(stderr, "Error calling execvp. %s\n", strerror(errno));
+    perror("Error calling execvp");
+
     exit(-1);
   }
 }
@@ -152,28 +145,23 @@ void eval(Command_vec* cv) {
     c.input = input_pipe_fd;
     c.error = dup(STDERR_FILENO);
     if (c.error == -1) {
-      fprintf(stderr, "Error setting up error stream output.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Error setting up error stream output");
       // clean up the input pipe
       if(close(input_pipe_fd) == -1) {
-	fprintf(stderr, "Error cleaning up file descriptors.\n");
-	fprintf(stderr, "%s\n", strerror(errno));
+	perror("Error cleaning up file descriptors");
       }
       break;
     }
     if (cur->next != NULL) {
       // Make pipe that will bridge between commands
       if (pipe(bridge_pipe_fd) != 0) {
-	fprintf(stderr, "Error setting up pipe between commands.\n");
-	fprintf(stderr, "%s\n", strerror(errno));
+	perror("Error setting up pipe between commands");
 	// Clean up file descriptors
 	if(close(input_pipe_fd) == -1) {
-	  fprintf(stderr, "Error cleaning up file descriptors.\n");
-	  fprintf(stderr, "%s\n", strerror(errno));
+	  perror("Error cleaning up file descriptors");
 	}
 	if(close(c.error) == -1) {
-	  fprintf(stderr, "Error cleaning up file descriptors.\n");
-	  fprintf(stderr, "%s\n", strerror(errno));
+	  perror("Error cleaning up file descriptors");
 	}
 	break; // Go to wait for processes to end
       }
@@ -186,12 +174,10 @@ void eval(Command_vec* cv) {
       if (final_stream_fd == -1) {
 	// Clean up file descriptors
 	if(close(input_pipe_fd) == -1) {
-	  fprintf(stderr, "Error cleaning up file descriptors.\n");
-	  fprintf(stderr, "%s\n", strerror(errno));
+	  perror("Error cleaning up file descriptors");
 	}
 	if(close(c.error) == -1) {
-	  fprintf(stderr, "Error cleaning up file descriptors.\n");
-	  fprintf(stderr, "%s\n", strerror(errno));
+	  perror("Error cleaning up file descriptors");
 	}
 	break; // Go to wait for processes to end
       }
@@ -203,12 +189,10 @@ void eval(Command_vec* cv) {
     if (pid == -1) {
 	// Clean up file descriptors
 	if(close(input_pipe_fd) == -1) {
-	  fprintf(stderr, "Error cleaning up file descriptors.\n");
-	  fprintf(stderr, "%s\n", strerror(errno));
+	  perror("Error cleaning up file descriptors");
 	}
 	if(close(c.error) == -1) {
-	  fprintf(stderr, "Error cleaning up file descriptors.\n");
-	  fprintf(stderr, "%s\n", strerror(errno));
+	  perror("Error cleaning up file descriptors");
 	}
 	break; // Go to wait for processes to end
     }
@@ -221,8 +205,7 @@ void eval(Command_vec* cv) {
   unsigned i;
   for (i = 0; i < num_children; i++) {
     if (wait(NULL) == -1) {
-      fprintf(stderr, "Something went wrong while waiting for children to die.\n");
-      fprintf(stderr, "%s\n", strerror(errno));
+      perror("Something went wrong while waiting for children to die");
     }
   }
 }
