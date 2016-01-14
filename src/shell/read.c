@@ -20,42 +20,56 @@ Command_vec* read_commands(char* string) {
   cmd->error = NULL;
 
   int numWords = 0;
-  cmd->argv = (char**) malloc(sizeof(char*) * numWords);
+  cmd->argv = (char**) malloc(sizeof(char*) * (numWords + 1));
   int sizeWord = 0;
   char* tmpBuffer;
-  for (int i = 0; i < strlen(string); i++)
+  int i;
+  for (i = 0; i <= strlen(string); i++)
   {
-    if (strcmp(&string[i], " "))
+    if (string[i] == ' ' || string[i] == '\0')
     {
       // sizeWord++;
       tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
-      memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord) + 1);
+      memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
+      tmpBuffer[i - sizeWord] = '\0';
       sizeWord = i;
+      // sizeWord is the idx of first character of the next token
+      while (string[sizeWord] == ' ') {sizeWord++;i++;}
       numWords++;
-      cmd->argv = (char**) realloc(cmd->argv, sizeof(char*) * numWords);
-      cmd->argv[numWords] = tmpBuffer;
+      cmd->argv = (char**) realloc(cmd->argv, sizeof(char*) * (numWords + 1));
+      cmd->argv[numWords - 1] = tmpBuffer;
     }
-    else if (strcmp(&string[i], "|"))
+
+    // If we're at the end, we also want to finalize command structure.
+    if (string[i] == '|' || string[i] == '\0')
     {
       cmd->argc = numWords;
-      if (strcmp(cmd->argv[0], "cd"))
+      cmd->argv[numWords] = NULL;
+      if (strcmp(cmd->argv[0], "cd") == 0)
       {
         cmd->is_builtin = true;
       }
-      else if (strcmp(cmd->argv[0], "chdir"))
+      else if (strcmp(cmd->argv[0], "chdir") == 0)
       {
         cmd->is_builtin = true;
       }
-      else if (strcmp(cmd->argv[0], "exit"))
+      else if (strcmp(cmd->argv[0], "exit") == 0)
       {
         cmd->is_builtin = true;
       }
-    nextCV->command = cmd;
-    nextCV = nextCV->next;
-    cmd = (Command *) malloc(sizeof(Command));
-    cmd->input = NULL;
-    cmd->output = NULL;
-    cmd->error = NULL;
+      nextCV->command = cmd;
+      if (string[i] != '\0') {
+	cmd = (Command *) malloc(sizeof(Command));
+	Command_vec *cv = (Command_vec *) malloc(sizeof(Command_vec*));
+	nextCV->next = cv;
+	cmd->input = NULL;
+	cmd->output = NULL;
+	cmd->error = NULL;
+      } else {
+	nextCV->next = NULL;
+      }
+      nextCV = nextCV->next;
+
     }
   }
   return cv;
