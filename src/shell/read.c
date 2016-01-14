@@ -6,6 +6,10 @@
 
 Command_vec* read_commands(char* string) {
 
+  if (strlen(string) == 0) {
+    return NULL;
+  }
+
   Command_vec *cv = (Command_vec *) malloc(sizeof(Command_vec*));
 
 
