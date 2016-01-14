@@ -71,6 +71,12 @@ Command_vec* read_commands(char* string) {
       cmd->output = NULL;
       cmd->error = NULL;
       nextCV = nextCV->next;
+      // Consume |
+      sizeWord++; i++;
+      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+      if (string[i] == '\0')
+	break;
+      numWords = 0;
     }
 
     if (string[i] == '\0') {
