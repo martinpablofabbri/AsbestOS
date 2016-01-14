@@ -56,7 +56,11 @@ int setup_last_pipe (Command *c) {
  * Builtin to print the command history
  */
 void print_history () {
-  //history_list();
+  HIST_ENTRY **all = history_list();
+  unsigned ind = 0;
+  while(all[ind] != NULL) {
+    printf("%s\n",all[ind]->line);
+  }
 }
 
 /**
