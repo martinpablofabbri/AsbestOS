@@ -164,6 +164,7 @@ int start_execution (cmd_exec_info *c) {
     char **argv = c->cmd->argv;
     execvp(argv[0], argv);
     perror("Error calling execvp");
+
     exit(-1);
   }
 }
