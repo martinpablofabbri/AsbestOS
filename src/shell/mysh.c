@@ -19,11 +19,11 @@ int main(int argc, char *argv[])
 
     // Print command prompt
     printf("%s:%s>", getlogin(), cwd);
+    free(cwd);
 
     // Read user input and evaluate commands
     eval(read_commands());
 
-    free(cwd);
     // TODO(jg): remove when we can input and execute an exit command
     break;
   }
