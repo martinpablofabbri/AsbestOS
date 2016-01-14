@@ -23,7 +23,7 @@ Command_vec* read_commands(char* string) {
   cmd->argv = (char**) malloc(sizeof(char*) * (numWords + 1));
   int sizeWord = 0;
   char* tmpBuffer;
-  int i;
+  int i = 0;
   while (1)
   {
 
@@ -51,46 +51,51 @@ Command_vec* read_commands(char* string) {
     // chomp whitespace
     while (string[sizeWord] == ' ') {sizeWord++;i++;}
 
-    if (string[i] == '<') {
-      // consume following whitespace
-      sizeWord++; i++;
-      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+    // Getting redirect stuff
+    while (string[i] == '>' || string[i] == '<') {
+      if (string[i] == '<') {
+	// consume following whitespace
+	sizeWord++; i++;
+	while (string[sizeWord] == ' ') {sizeWord++;i++;}
 
-      // Read to end of filename
-      while (string[i] != ' ' &&
-	     string[i] != '\0' && 
-	     string[i] != '|' &&
-	     string[i] != '<' &&
-	     string[i] != '>') {
-	i++;
+	// Read to end of filename
+	while (string[i] != ' ' &&
+	       string[i] != '\0' && 
+	       string[i] != '|' &&
+	       string[i] != '<' &&
+	       string[i] != '>') {
+	  i++;
+	}
+	// Handle filename
+	tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
+	memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
+	tmpBuffer[i - sizeWord] = '\0';
+	sizeWord = i;
+	cmd->input = tmpBuffer;
+	while (string[sizeWord] == ' ') {sizeWord++;i++;}
       }
-      // Handle filename
-      tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
-      memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
-      tmpBuffer[i - sizeWord] = '\0';
-      sizeWord = i;
-      cmd->input = tmpBuffer;
-      while (string[sizeWord] == ' ') {sizeWord++;i++;}
-    } else if (string[i] == '>') {
-      // consume following whitespace
-      sizeWord++; i++;
-      while (string[sizeWord] == ' ') {sizeWord++;i++;}
+    
+      if (string[i] == '>') {
+	// consume following whitespace
+	sizeWord++; i++;
+	while (string[sizeWord] == ' ') {sizeWord++;i++;}
 
-      // Read to end of filename
-      while (string[i] != ' ' &&
-	     string[i] != '\0' && 
-	     string[i] != '|' &&
-	     string[i] != '<' &&
-	     string[i] != '>') {
-	i++;
+	// Read to end of filename
+	while (string[i] != ' ' &&
+	       string[i] != '\0' && 
+	       string[i] != '|' &&
+	       string[i] != '<' &&
+	       string[i] != '>') {
+	  i++;
+	}
+	// Handle filename
+	tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
+	memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
+	tmpBuffer[i - sizeWord] = '\0';
+	sizeWord = i;
+	cmd->output = tmpBuffer;
+	while (string[sizeWord] == ' ') {sizeWord++;i++;}
       }
-      // Handle filename
-      tmpBuffer = (char*) malloc(sizeof(char) * (i - sizeWord) + 1);
-      memcpy(tmpBuffer, &string[sizeWord], (i - sizeWord));
-      tmpBuffer[i - sizeWord] = '\0';
-      sizeWord = i;
-      cmd->output = tmpBuffer;
-      while (string[sizeWord] == ' ') {sizeWord++;i++;}
     }
 
     // If we need another command
