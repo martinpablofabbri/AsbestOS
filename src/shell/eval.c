@@ -1,7 +1,9 @@
 #include "eval.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -20,10 +22,11 @@ int setup_first_pipe (Command *c) {
   int fd;
   if (c->input) {
     fd = open(c->input, O_RDONLY);
-    // TODO(keegan): handle error case
   } else {
-    // TODO(keegan): handle error case in dup
     fd = dup(STDIN_FILENO);
+  }
+  if (fd == -1) {
+    fprintf(stderr, "Unable to set up input. Reason: %s\n", strerror(errno));
   }
   return fd;
 }
@@ -35,13 +38,14 @@ int setup_first_pipe (Command *c) {
  * on success, -1 on failure.
  */
 int setup_last_pipe (Command *c) {
-  // TODO(keegan): Handle dup error case
   int fd;
   if (c->output) {
     fd = open(c->output, O_WRONLY | O_CREAT);
-    // TODO(keegan): handle error case
   } else {
     fd = dup(STDOUT_FILENO);
+  }
+  if (fd == -1) {
+    fprintf(stderr, "Unable to setup output. Reason: %s\n", strerror(errno));
   }
   return fd;
 }
@@ -49,44 +53,75 @@ int setup_last_pipe (Command *c) {
 /**
  * Begin execution of the specified command.
  * Fills in the PID of the child process in the struct.
- * If fork fails, 
+ * 
+ * Returns the PID of the child on success, and -1 on error
  */
-void start_execution (cmd_exec_info *c) {
+int start_execution (cmd_exec_info *c) {
   int p = fork();
   if (p == -1) {
-    // TODO(keegan): Print out detailed error msg
+    fprintf(stderr, "There was a problem forking the main shell:\n");
+    fprintf(stderr, "%s\n", strerror(errno));
+    return -1;
   } else if (p) {
     // Parent
     c->pid = p;
     // Close the file descriptors we don't need any more
+    // If we ever get an error, then report it but do not
+    // halt.
     if (close(c->input) != 0) {
-      // TODO(keegan): handle error
+      fprintf(stderr, "Problem closing input stream: %s\n", strerror(errno));
     }
     if (close(c->output) != 0) {
-      // TODO(keegan): handle error
+      fprintf(stderr, "Problem closing output stream: %s\n", strerror(errno));
     }
     if (close(c->error) != 0) {
-      // TODO(keegan): handle error
+      fprintf(stderr, "Problem closing error stream: %s\n", strerror(errno));
     }
+    return p;
   } else {
     // Child
     // Tie together input, output, and stderr
-    // TODO(keegan): handle error case
-    dup2(c->input, STDIN_FILENO);
-    dup2(c->output, STDOUT_FILENO);
-    dup2(c->error, STDERR_FILENO);
-    // TODO(keegan): handle error case
-    close(c->input);
-    close(c->output);
-    close(c->error);
+    // If any has an error, die.
+    if (dup2(c->input, STDIN_FILENO) == -1) {
+      fprintf(stderr, "Error duplicating command input.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+      exit(-1);
+    }
+    if (dup2(c->output, STDOUT_FILENO) == -1) {
+      fprintf(stderr, "Error duplicating command output.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+      exit(-1);
+    }
+    if (dup2(c->error, STDERR_FILENO) == -1) {
+      fprintf(stderr, "Error duplicating command error stream.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+      exit(-1);
+    }
+
+    if(close(c->input) == -1) {
+      fprintf(stderr, "Error cleaning up file descriptors in child.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+    }
+    if(close(c->output) == -1) {
+      fprintf(stderr, "Error cleaning up file descriptors in child.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+    }
+    if(close(c->error) == -1) {
+      fprintf(stderr, "Error cleaning up file descriptors in child.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+    }
     if (c->extra_fd != -1) {
-      close(c->extra_fd);
+      if(close(c->extra_fd) == -1) {
+	fprintf(stderr, "Error cleaning up file descriptors in child.\n");
+	fprintf(stderr, "%s\n", strerror(errno));
+      }
     }
 
     // execvp the specified function
     char **argv = c->cmd->argv;
     execvp(argv[0], argv);
-    // TODO(keegan): Error out here
+    fprintf(stderr, "Error calling execvp. %s\n", strerror(errno));
+    exit(-1);
   }
 }
 
@@ -101,18 +136,45 @@ void eval(Command_vec cv) {
   // TODO(keegan): handle case where there are no commands?
 
   Command_vec *cur = &cv;
-  int input_pipe_fd = setup_first_pipe (cur->command);
   int bridge_pipe_fd[2];
-  // TODO(keegan): handle errors here
+  int input_pipe_fd = setup_first_pipe (cur->command);
+  if (input_pipe_fd == -1) {
+    // Nothing to do here, nothing to clean up.
+    return;
+  }
+
+  unsigned num_children = 0;
   while (cur != NULL) {
     Command *command = cur->command;
     cmd_exec_info c;
     c.cmd = command;
     c.input = input_pipe_fd;
+    c.error = dup(STDERR_FILENO);
+    if (c.error == -1) {
+      fprintf(stderr, "Error setting up error stream output.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+      // clean up the input pipe
+      if(close(input_pipe_fd) == -1) {
+	fprintf(stderr, "Error cleaning up file descriptors.\n");
+	fprintf(stderr, "%s\n", strerror(errno));
+      }
+      break;
+    }
     if (cur->next != NULL) {
       // Make pipe that will bridge between commands
       if (pipe(bridge_pipe_fd) != 0) {
-	// TODO(keegan): handle error
+	fprintf(stderr, "Error setting up pipe between commands.\n");
+	fprintf(stderr, "%s\n", strerror(errno));
+	// Clean up file descriptors
+	if(close(input_pipe_fd) == -1) {
+	  fprintf(stderr, "Error cleaning up file descriptors.\n");
+	  fprintf(stderr, "%s\n", strerror(errno));
+	}
+	if(close(c.error) == -1) {
+	  fprintf(stderr, "Error cleaning up file descriptors.\n");
+	  fprintf(stderr, "%s\n", strerror(errno));
+	}
+	break; // Go to wait for processes to end
       }
       c.output = bridge_pipe_fd[1];
       c.extra_fd = bridge_pipe_fd[0];
@@ -120,24 +182,47 @@ void eval(Command_vec cv) {
     } else {
       // This is the last command
       int final_stream_fd = setup_last_pipe(command);
-      // TODO(keegan): handle error
+      if (final_stream_fd == -1) {
+	// Clean up file descriptors
+	if(close(input_pipe_fd) == -1) {
+	  fprintf(stderr, "Error cleaning up file descriptors.\n");
+	  fprintf(stderr, "%s\n", strerror(errno));
+	}
+	if(close(c.error) == -1) {
+	  fprintf(stderr, "Error cleaning up file descriptors.\n");
+	  fprintf(stderr, "%s\n", strerror(errno));
+	}
+	break; // Go to wait for processes to end
+      }
       c.output = final_stream_fd;
       c.extra_fd = -1;
     }
-    c.error = dup(STDERR_FILENO);
-    // TODO(keegan): handle error
 
-    start_execution(&c);
-    // TODO(keegan): Add error handling for start_command
+    int pid = start_execution(&c);
+    if (pid == -1) {
+	// Clean up file descriptors
+	if(close(input_pipe_fd) == -1) {
+	  fprintf(stderr, "Error cleaning up file descriptors.\n");
+	  fprintf(stderr, "%s\n", strerror(errno));
+	}
+	if(close(c.error) == -1) {
+	  fprintf(stderr, "Error cleaning up file descriptors.\n");
+	  fprintf(stderr, "%s\n", strerror(errno));
+	}
+	break; // Go to wait for processes to end
+    }
 
+    num_children += 1;
     cur = cur->next;
   }
 
-  cur = &cv;
-  while (cur != NULL) {
-    // TODO(keegan): Add error handling
-    wait(NULL);
-    cur = cur->next;
+  /* Clean up processes */
+  unsigned i;
+  for (i = 0; i < num_children; i++) {
+    if (wait(NULL) == -1) {
+      fprintf(stderr, "Something went wrong while waiting for children to die.\n");
+      fprintf(stderr, "%s\n", strerror(errno));
+    }
   }
 }
 
