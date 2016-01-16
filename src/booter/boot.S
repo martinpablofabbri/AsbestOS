@@ -44,13 +44,29 @@ boot_start:
 	mov	$STR_LOADING, %si
 	call	print_str
 
-	#---------------------------------------------------------------------
-	# TODO:  Load the remainder of the program into memory using int 13h
-	#        "Extended Read Operation."  If it fails, jump to boot_fail.
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
-	#---------------------------------------------------------------------
+	# Set up disk access packet (DAP)
+	add	$0x10, %esp
+	# LBA
+	push	$0x0000
+	push	$0x0000
+	push	$0x0000
+	push	$0x0001
+	# segment:offset to receive data
+	push	$0x2000
+	push	$0x0000
+	# dap[0x00] - dap[0x03]
+	# Number of 512 byte sectors to copy
+	push	$0x0010
+	push	$0x0010
 
+	mov	$0x0f00, %ax
+	mov	%ax, %ds
+	mov	$0x42, %ah
+	xor	%si, %si
+
+	int	$0x13
+	# TODO(keegan): where might this fail?
+	
 	mov	$STR_LOADED, %si
 	call	print_str
 
