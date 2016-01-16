@@ -45,26 +45,26 @@ boot_start:
 	call	print_str
 
 	# Set up disk access packet (DAP)
-	add	$0x10, %esp
+	# add	$0x10, %esp
 	# LBA
-	push	$0x0000
-	push	$0x0000
-	push	$0x0000
-	push	$0x0001
+	# push	$0x0000
+	# push	$0x0000
+	# push	$0x0000
+	# push	$0x0001
 	# segment:offset to receive data
-	push	$0x2000
-	push	$0x0000
+	# push	$0x2000
+	# push	$0x0000
 	# dap[0x00] - dap[0x03]
 	# Number of 512 byte sectors to copy
-	push	$0x0010
-	push	$0x0010
+	# push	$0x0010
+	# push	$0x0010
 
-	mov	$0x0f00, %ax
-	mov	%ax, %ds
-	mov	$0x42, %ah
-	xor	%si, %si
+	# mov	$0x0f00, %ax
+	# mov	%ax, %ds
+	# mov	$0x42, %ah
+	# xor	%si, %si
 
-	int	$0x13
+	# int	$0x13
 	# TODO(keegan): where might this fail?
 	
 	mov	$STR_LOADED, %si
@@ -96,7 +96,8 @@ start_protected:
 	#            process would demolish us.  (We don't turn interrupts
 	#            back on until we are safely in our C program, and have
 	#            set up an Interrupt Descriptor Table.)
-	#
+	cli
+
 	#        2)  Set the Global Descriptor Table Register (GDTR) to our
 	#            simple Global Descriptor Table specified at the end of
 	#            the boot-loader.  You will need to write it like this,
@@ -108,6 +109,8 @@ start_protected:
 	#            the GDT descriptor are loaded; default is to load only
 	#            24 bits.  The CPU doesn't need an addr32 prefix but ELF
 	#            doesn't do 16-bit relocations.)
+	data32 addr32 lgdt gdtdesc
+	
 	#
 	#        3)  Turn on protected mode by modifying Control Register cr0.
 	#            See IA32 Manual Volume 3A, Section 2.5 for details of
@@ -118,6 +121,13 @@ start_protected:
 	#
 	#            You should use the constants in the boot.h header file
 	#            for this step, to make your code more readable.
+	mov	%cr0, %eax
+	# Enable protected mode
+	# or	$CR0_PE, %eax
+	or	$1, %al
+
+	mov	%eax, %cr0
+	
 	#
 	#        See also IA32 Manual Volume 3A, Section 8.9.1 for the general
 	#        overview.  (We only do the parts that are relevant to our
@@ -176,7 +186,9 @@ call_c_entry:
 	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
 	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
 	#---------------------------------------------------------------------
-
+	movl $PROGRAM_BASE_ADDR, %ebx
+	movl (%ebx), %eax
+	
 	#=====================================================================
 	# The rest of this file contains helper functions for the 16-bit
 	# portion of the bootloader, so switch back to 16-bit code generation.
