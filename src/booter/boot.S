@@ -62,7 +62,8 @@ boot_start:
 	mov 	%sp, %si
 
 	int	$0x13
-	# TODO(keegan): where might this fail?
+	# If the operation failed, CF is set
+	jc	boot_fail
 	
 	mov	$STR_LOADED, %si
 	call	print_str
