@@ -45,26 +45,23 @@ boot_start:
 	call	print_str
 
 	# Set up disk access packet (DAP)
-	# add	$0x10, %esp
 	# LBA
-	# push	$0x0000
-	# push	$0x0000
-	# push	$0x0000
-	# push	$0x0001
+	push	$0x0000
+	push	$0x0000
+	push	$0x0000
+	push	$0x0001
 	# segment:offset to receive data
-	# push	$0x2000
-	# push	$0x0000
+	push	$0x2000
+	push	$0x0000
 	# dap[0x00] - dap[0x03]
 	# Number of 512 byte sectors to copy
-	# push	$0x0010
-	# push	$0x0010
+	push	$0x0010
+	push	$0x0010
 
-	# mov	$0x0f00, %ax
-	# mov	%ax, %ds
-	# mov	$0x42, %ah
-	# xor	%si, %si
+	mov	$0x42, %ah
+	mov 	%sp, %si
 
-	# int	$0x13
+	int	$0x13
 	# TODO(keegan): where might this fail?
 	
 	mov	$STR_LOADED, %si
@@ -123,9 +120,7 @@ start_protected:
 	#            for this step, to make your code more readable.
 	mov	%cr0, %eax
 	# Enable protected mode
-	# or	$CR0_PE, %eax
-	or	$1, %al
-
+	or	$CR0_PE, %eax
 	mov	%eax, %cr0
 	
 	#
