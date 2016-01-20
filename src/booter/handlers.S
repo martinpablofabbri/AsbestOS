@@ -29,3 +29,17 @@
 #
 #                popa    # Restore all registers
 #                iret    # Go back to interrupted code
+	
+	.align 4
+	.globl timer_handler
+	timer_handler:
+		pusha	# Save registers
+		cld
+
+		
+
+		mov	$0x20, %al
+		out	%al, $0x20
+
+		popa	# Restore registers
+		iret
