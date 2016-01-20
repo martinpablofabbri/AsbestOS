@@ -22,3 +22,5 @@
 #define SEL_CODESEG       0x08    /* Code selector. */
 #define SEL_DATASEG       0x10    /* Data selector. */
 
+/* ELF header information. */
+#define E_ENTRY_OFFSET    0x18    /* Offset to the e_entry field in ELF hdr */
