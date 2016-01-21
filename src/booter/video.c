@@ -75,11 +75,28 @@ void draw_paddles(GameState* gs) {
   for (i=left_idx; i<=right_idx; i++) {
     SET_PIX(i, HEIGHT-2, '=',GREEN,BLACK);
   }
+}
 
+void draw_ball (Ball* ball, unsigned left_offset) {
+  // Draw a single ball
+  unsigned x_idx = 1 + left_offset + \
+    (int)((WIDTH / 2 - 1)*ball->x);
+  unsigned y_idx = 1 + (int)((HEIGHT-1)*ball->y);
+  SET_PIX(x_idx, y_idx, '@', BLUE, BLACK);
+}
+
+void draw_balls (ball_list* balls, unsigned left_offset) {
+  ball_list* cur = balls;
+  while (cur) {
+    draw_ball(cur->ball, left_offset);
+    cur = cur->next;
+  }
 }
 
 void display (GameState* gs) {
   // Draw border
   draw_border();
   draw_paddles(gs);
+  draw_balls(gs->left.balls, 0);
+  draw_balls(gs->right.balls, WIDTH/2);
 }
