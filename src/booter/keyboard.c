@@ -1,3 +1,5 @@
+#include "handlers.h"
+#include "interrupts.h"
 #include "ports.h"
 
 /* This is the IO port of the PS/2 controller, where the keyboard's scan
@@ -40,8 +42,9 @@
 void init_keyboard(void) {
     /* TODO:  Initialize any state required by the keyboard handler. */
 
-    /* TODO:  You might want to install your keyboard interrupt handler
-     *        here as well.
-     */
+  install_interrupt_handler(KEYBOARD_INTERRUPT, keyboard_handler);
 }
 
+void keyboard_event () {
+
+}

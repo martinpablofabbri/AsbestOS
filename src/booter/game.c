@@ -10,6 +10,7 @@ void c_start(void) {
      */
   init_interrupts();
   init_timer();
+  init_keyboard();
   enable_interrupts();
 
     /* Loop forever, so that we don't fall back into the bootloader code. */

@@ -3,5 +3,7 @@
 
 void init_keyboard(void);
 
+extern void keyboard_event(void);
+
 #endif /* KEYBOARD_H */
 

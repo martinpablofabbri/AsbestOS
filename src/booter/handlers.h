@@ -5,3 +5,4 @@
  */
 
 void *(timer_handler)(void);
+void *(keyboard_handler)(void);
