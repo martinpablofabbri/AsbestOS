@@ -14,3 +14,7 @@ void c_start(void) {
     get_keyboard_input();
   }
 }
+
+void update_game(Game *) {
+  // TODO: Update game struct
+}

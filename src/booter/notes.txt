@@ -1,0 +1,51 @@
+typedef struct
+{
+  HalfBoard left;
+  HalfBoard right;
+  int difficulty;
+  int timer;
+} Game;
+
+typedef struct
+{
+    float paddlePos;
+    Balls* balls;
+    int score;
+    int health;
+} HalfBoard;
+
+typedef struct Balls
+{
+  Balls* next;
+  Balls* prev;
+  float x, y;
+};
+
+
+
+
+  while (1) {
+    get_keyboard_input();
+
+    // update game state
+
+    // display
+
+    // sleep();
+  }
+
+
+  if (is_pressed(A_KEY))
+  {
+    /* do A pressed things */
+  }
+
+
+
+/* TODO:
+  rng: keegan
+  make game struct jalen
+  update game struct martin
+  display game struct jalen
+  reset game struct
+*/
