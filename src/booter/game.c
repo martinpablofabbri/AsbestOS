@@ -97,10 +97,10 @@ void update_game(GameState* game) {
 
       newLeftBallEntry->next = game->left.balls;
       if (game->left.balls) {
-	newLeftBallEntry->prev = game->left.balls->prev;
-	game->left.balls->prev = newLeftBallEntry;
+        newLeftBallEntry->prev = game->left.balls->prev;
+        game->left.balls->prev = newLeftBallEntry;
       } else {
-	newLeftBallEntry->prev = newLeftBallEntry;
+        newLeftBallEntry->prev = newLeftBallEntry;
       }
       game->left.balls = newLeftBallEntry;
 
@@ -116,10 +116,10 @@ void update_game(GameState* game) {
 
       newRightBallEntry->next = game->right.balls;
       if (game->right.balls) {
-	newRightBallEntry->prev = game->right.balls->prev;
-	game->right.balls->prev = newRightBallEntry;
+        newRightBallEntry->prev = game->right.balls->prev;
+        game->right.balls->prev = newRightBallEntry;
       } else {
-	newRightBallEntry->prev = newRightBallEntry;
+        newRightBallEntry->prev = newRightBallEntry;
       }
       game->right.balls = newRightBallEntry;
 
@@ -134,24 +134,49 @@ void update_game(GameState* game) {
    *********************************/
   // Check to make sure paddle stays on screen
   // 20 horizontal paddle positions
-  if (is_pressed(A_KEY))     {
+  if (is_pressed(S_KEY)) {
+    if (game->left.paddle_pos > 0.01) {
+      game->left.paddle_pos -= 0.01;
+    }
+  }
+
+  else if (is_pressed(A_KEY)) {
     if (game->left.paddle_pos > 0.05) {
       game->left.paddle_pos -= 0.05;
     }
   }
 
   else if (is_pressed(D_KEY)) {
+    if (game->left.paddle_pos < 0.99) {
+      game->left.paddle_pos += 0.01;
+    }
+  }
+
+  else if (is_pressed(F_KEY)) {
     if (game->left.paddle_pos < 0.95) {
       game->left.paddle_pos += 0.05;
     }
   }
 
-  if (is_pressed(J_KEY))     {
+  if (is_pressed(K_KEY)) {
+    if (game->right.paddle_pos > 0.01) {
+      game->right.paddle_pos -= 0.01;
+    }
+  }
+
+  else if (is_pressed(J_KEY)) {
     if (game->right.paddle_pos > 0.05) {
       game->right.paddle_pos -= 0.05;
     }
   }
+
   else if (is_pressed(L_KEY)) {
+    if (game->right.paddle_pos < 0.99) {
+      game->right.paddle_pos += 0.01;
+    }
+  }
+
+  else if (is_pressed(SEMICOLON_KEY)) {
     if (game->right.paddle_pos < 0.95) {
       game->right.paddle_pos += 0.05;
     }
