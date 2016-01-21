@@ -31,11 +31,11 @@ typedef struct { // Halfboard
   int health;
 } Halfboard;
 
-struct game_state {
+typedef struct { // GameState
   Halfboard left, right;
 
   // Higher = harder
   int difficulty;
-};
+} GameState;
 
 #endif  // SRC_BOOTER_GAME_DATA_H
