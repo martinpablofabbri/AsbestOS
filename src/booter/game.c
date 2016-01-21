@@ -109,7 +109,24 @@ void update_game(GameState* game) {
       newLeftBall->ball_type = 0;
     }
 
-    // TODO(keegan): copy for right balls
+    // Right Ball
+    ball_list *newRightBallEntry = new_ball();
+    if (newRightBallEntry) {
+      Ball* newRightBall = &newRightBallEntry->ball;
+
+      newRightBallEntry->next = game->right.balls;
+      if (game->right.balls) {
+	newRightBallEntry->prev = game->right.balls->prev;
+	game->right.balls->prev = newRightBallEntry;
+      } else {
+	newRightBallEntry->prev = newRightBallEntry;
+      }
+      game->right.balls = newRightBallEntry;
+
+      newRightBall->x = (float)(rand()) / (float)(UINT_MAX);
+      newRightBall->y = 0.0;
+      newRightBall->ball_type = 0;
+    }
   }
 
   /*********************************
@@ -186,30 +203,29 @@ void update_game(GameState* game) {
     }
     free_ball(lastLeftBall);
   }
-  
-  /*
+
   ball_list* lastRightBall = game->right.balls->prev;
-  if (lastRightBall->ball->y > 1) {
-    if (game->right.paddle_pos + 0.05 > lastRightBall->ball.x) {
-      if (game->right.paddle_pos - 0.05 < lastRightBall->ball.x) {
+  if (lastRightBall->ball.y > 1) {
+    if (game->right.paddle_pos + game->right.paddle_width / 2 > lastRightBall->ball.x) {
+      if (game->right.paddle_pos - game->right.paddle_width / 2 < lastRightBall->ball.x) {
         // paddle hit ball
         game->right.score++;
-        lastRightBall->prev.next == NULL;
-        // TODO:free(lastRightBall.ball); ??
-        free(lastRightBall);
       } else {
         // paddle didn't hit ball
         game->right.health--;
-        lastRightBall->prev.next == NULL;
-        // TODO:free(lastRightBall.ball); ??
-        free(lastRightBall);
       }
     } else {
       // paddle didn't hit ball
       game->right.health--;
-      lastRightBall->prev.next == NULL;
-      // TODO:free(lastRightBall.ball); ??
-      free(lastRightBall);
     }
-  }*/
+    // Remove the last right ball from the list
+    if (lastRightBall->prev == lastRightBall) {
+      // It's the last ball right
+      game->right.balls = 0;
+    } else {
+      lastRightBall->prev->next = 0;
+      game->right.balls->prev = lastRightBall->prev;
+    }
+    free_ball(lastRightBall);
+  }
 }
