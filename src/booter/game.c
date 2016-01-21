@@ -1,5 +1,6 @@
 #include "interrupts.h"
 #include "keyboard.h"
+#include "video.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -19,10 +20,15 @@ void c_start(void) {
   /* Loop forever, so that we don't fall back into the bootloader code. */
   while (1) {
     get_keyboard_input();
-    if (is_pressed(A_KEY)) {
-      ((char*)VIDEO_BUFFER)[0] = 'A';
-    } else {
-      ((char*)VIDEO_BUFFER)[0] = 'a';
-    }
+    ((char*)VIDEO_BUFFER)[0] = is_pressed(A_KEY) ? 'A' : 'a';
+    ((char*)VIDEO_BUFFER)[2] = is_pressed(S_KEY) ? 'S' : 's';
+    ((char*)VIDEO_BUFFER)[4] = is_pressed(D_KEY) ? 'D' : 'd';
+    ((char*)VIDEO_BUFFER)[6] = is_pressed(F_KEY) ? 'F' : 'f';
+    ((char*)VIDEO_BUFFER)[8] = ' ';
+    ((char*)VIDEO_BUFFER)[9] = is_pressed(SPACE_KEY) ? (WHITE << 4) : (BLACK << 4);
+    ((char*)VIDEO_BUFFER)[10] = is_pressed(J_KEY) ? 'J' : 'j';
+    ((char*)VIDEO_BUFFER)[12] = is_pressed(K_KEY) ? 'K' : 'k';
+    ((char*)VIDEO_BUFFER)[14] = is_pressed(L_KEY) ? 'L' : 'l';
+    ((char*)VIDEO_BUFFER)[16] = is_pressed(SEMICOLON_KEY) ? ':' : ';';
   }
 }

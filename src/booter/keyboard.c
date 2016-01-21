@@ -27,18 +27,6 @@
 #define KEYBOARD_PORT 0x60
 #define SC_BUFFER_SIZE 0x40
 
-/* TODO:  You can create static variables here to hold keyboard state.
- *        Note that if you create some kind of circular queue (a very good
- *        idea, you should declare it "volatile" so that the compiler knows
- *        that it can be changed by exceptional control flow.
- *
- *        Also, don't forget that interrupts can interrupt *any* code,
- *        including code that fetches key data!  If you are manipulating a
- *        shared data structure that is also manipulated from an interrupt
- *        handler, you might want to disable interrupts while you access it,
- *        so that nothing gets mangled...
- */
-
 static volatile unsigned char scancode_buffer[SC_BUFFER_SIZE];
 // The head points to the oldest element in the buffer
 unsigned head_idx;
@@ -114,6 +102,30 @@ void get_keyboard_input () {
     switch (scan_code & 0x7f){
     case 0x1E:
       keyboard_state[(unsigned)A_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x1F:
+      keyboard_state[(unsigned)S_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x20:
+      keyboard_state[(unsigned)D_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x21:
+      keyboard_state[(unsigned)F_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x24:
+      keyboard_state[(unsigned)J_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x25:
+      keyboard_state[(unsigned)K_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x26:
+      keyboard_state[(unsigned)L_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x27:
+      keyboard_state[(unsigned)SEMICOLON_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
+      break;
+    case 0x39:
+      keyboard_state[(unsigned)SPACE_KEY] = (scan_code & 0x80) ? KEY_UP : KEY_DOWN;
       break;
     }
   }

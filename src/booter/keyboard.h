@@ -6,12 +6,17 @@ typedef enum {
   KEY_UP
 } key_state;
 
-#define NUM_KEYS 4
+#define NUM_KEYS 9
 typedef enum {
   A_KEY,
   S_KEY,
   D_KEY,
-  F_KEY
+  F_KEY,
+  J_KEY,
+  K_KEY,
+  L_KEY,
+  SEMICOLON_KEY,
+  SPACE_KEY
 } key_name;
 
 
