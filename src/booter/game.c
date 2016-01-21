@@ -5,6 +5,8 @@
 #include "rand.h"
 #include <limits.h>
 
+void update_game(GameState* gs);
+
 void reset_game_state(GameState* gs) {
   gs->difficulty = START_DIFFICULTY;
 
@@ -43,7 +45,6 @@ void c_start(void) {
 }
 
 void update_game(GameState* game) {
-  /*
   game->timer++;
 
   if (game->timer % 500 == 0) {
@@ -53,6 +54,7 @@ void update_game(GameState* game) {
     game->difficulty++;
   }
 
+  /*
   if (game->timer % 20 == 0) {
     // Add a new ball at a rate of 5 / second
 
@@ -82,11 +84,11 @@ void update_game(GameState* game) {
     newRightBallEntry->prev = game->right.balls->prev;
     game->right.balls->prev = newRightBallEntry;
     game->right.balls = newRightBallEntry;
-  }
+    }*/
 
   /*********************************
    * UPDATE PADDLES ON KEY PRESSES *
-   *********************************
+   *********************************/
   // Check to make sure paddle stays on screen
   // 20 horizontal paddle positions
   if (is_pressed(A_KEY))     {
@@ -102,7 +104,7 @@ void update_game(GameState* game) {
   }
 
   if (is_pressed(J_KEY))     {
-    if (game->right.paddle_pos > 0.5) {
+    if (game->right.paddle_pos > 0.05) {
       game->right.paddle_pos -= 0.05;
     }
   }
