@@ -1,4 +1,6 @@
 #include "timer.h"
+#include "handlers.h"
+#include "interrupts.h"
 #include "ports.h"
 
 /*============================================================================
@@ -66,4 +68,9 @@ void init_timer(void) {
     /* TODO:  You might want to install your timer interrupt handler
      *        here as well.
      */
+    install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
+}
+
+void timer_event () {
+  
 }

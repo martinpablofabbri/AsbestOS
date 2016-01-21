@@ -177,6 +177,11 @@ void init_interrupts(void) {
      *        Once the entire IDT has been cleared, use the lidt() function
      *        defined above to install our IDT.
      */
+  unsigned size = NUM_INTERRUPTS * sizeof(IDT_Descriptor);
+  char *ptr = (char *)interrupt_descriptor_table;
+  char *end = ptr + size;
+  while (ptr < end) {*(ptr++) = 0;}
+  lidt(interrupt_descriptor_table, size);
 
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
@@ -213,6 +218,11 @@ void install_interrupt_handler(int num, void *handler) {
      *        REMOVE THIS COMMENT WHEN YOU WRITE THE CODE.  (FEEL FREE TO
      *        INCORPORATE THE ABOVE COMMENTS IF YOU WISH.)
      */
+  IDT_Descriptor* desc = &interrupt_descriptor_table[num];
+  intptr_t offset = (intptr_t)handler;
+  desc->offset_15_0 = offset & 0xFFFF;
+  desc->offset_31_16 = (offset >> 0x10) & 0xFFFF;
+  desc->selector = SEL_CODESEG;
+  desc->zero = 0;
+  desc->type_attr = DEFAULT_TYPE_ATTR;
 }
-
-
