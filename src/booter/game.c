@@ -1,9 +1,11 @@
 #include "interrupts.h"
 #include "keyboard.h"
 #include "video.h"
+#include "game_data.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
+  seed(0);
   init_interrupts();
   init_timer();
   init_keyboard();
@@ -12,6 +14,7 @@ void c_start(void) {
   /* Loop forever, so that we don't fall back into the bootloader code. */
   while (1) {
     get_keyboard_input();
+    sleep_cs(100);
   }
 }
 
@@ -26,7 +29,7 @@ void update_game(game_state game) {
   }
 
   if (game.timer % 20 == 0) {
-    // TODO: Add new ball
+    // TODO: Add new ball with random x and y = 0 at beginning of balls list
   }
 */
 
