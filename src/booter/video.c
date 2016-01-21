@@ -18,18 +18,37 @@
  * more about this topic, go to http://wiki.osdev.org/Main_Page and look at
  * the VGA links in the "Video" section.
  */
-#define VIDEO_BUFFER ((void *) 0xB8000)
+#define VIDEO_BUFFER ((unsigned char *) 0xB8000)
+#define SET_PIX(x,y,c,f,b) do { \
+  VIDEO_BUFFER[2*((y)*WIDTH+(x))] = (c); \
+  VIDEO_BUFFER[2*((y)*WIDTH+(x))+1] = ((b)<<4) | (f); \
+  } while (0)
 
-
-/* TODO:  You can create static variables here to hold video display state,
- *        such as the current foreground and background color, a cursor
- *        position, or any other details you might want to keep track of!
- */
-
-
-void init_video(void) {
-    /* TODO:  Do any video display initialization you might want to do, such
-     *        as clearing the screen, initializing static variable state, etc.
-     */
+void clear() {
+  unsigned size = WIDTH * HEIGHT * 2;
+  unsigned i = 0;
+  while (i<size) {VIDEO_BUFFER[i++]=0;}
 }
 
+void init_video(void) {
+  clear();
+}
+
+void draw_border () {
+  // Top
+  unsigned i;
+  for (i=0; i<WIDTH; i++) {
+    SET_PIX(i,0,'-',CYAN,GREEN);
+    SET_PIX(i,HEIGHT-1,'-',CYAN,GREEN);
+  }
+  for (i=1; i<HEIGHT-1; i++) {
+    SET_PIX(0,i,'|',CYAN,GREEN);
+    SET_PIX(WIDTH-1,i,'|',CYAN,GREEN);
+    SET_PIX(WIDTH/2,i,'|',CYAN,GREEN);
+  }
+}
+
+void display (GameState* gs) {
+  // Draw border
+  draw_border();
+}

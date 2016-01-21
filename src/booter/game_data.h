@@ -1,6 +1,9 @@
 #ifndef SRC_BOOTER_GAME_DATA_H
 #define SRC_BOOTER_GAME_DATA_H
 
+#define START_HEALTH 100
+#define START_DIFFICULTY 1
+
 // Ball, holds position and type
 typedef struct {
   // Horizontal position of ball, in range [0=leftmost, 1=rightmost]
@@ -38,5 +41,7 @@ typedef struct { // GameState
   int difficulty;
   int timer;
 } GameState;
+
+void reset_game_state(GameState* gs);
 
 #endif  // SRC_BOOTER_GAME_DATA_H

@@ -1,6 +1,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
+#include "game_data.h"
 
 /* Available colors from the 16-color palette used for EGA and VGA, and
  * also for text-mode VGA output.
@@ -22,8 +23,10 @@
 #define YELLOW        14
 #define WHITE         15
 
+#define WIDTH 80
+#define HEIGHT 25
 
 void init_video(void);
-
+void display (GameState* gs);
 
 #endif /* VIDEO_H */
