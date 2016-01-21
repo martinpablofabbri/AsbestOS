@@ -93,11 +93,63 @@ void draw_balls (ball_list* balls, unsigned left_offset) {
   }
 }
 
+void draw_health (GameState* gs) {
+  SET_PIX(1, 1, 'H', BLACK, GREEN);
+  SET_PIX(2, 1, 'e', BLACK, GREEN);
+  SET_PIX(3, 1, 'a', BLACK, GREEN);
+  SET_PIX(4, 1, 'l', BLACK, GREEN);
+  SET_PIX(5, 1, 't', BLACK, GREEN);
+  SET_PIX(6, 1, 'h', BLACK, GREEN);
+  SET_PIX(7, 1, ':', BLACK, GREEN);
+  SET_PIX(8, 1, ' ', BLACK, GREEN);
+
+  unsigned health = gs->left.health + gs->right.health;
+
+  if (health >= 100) {
+    SET_PIX(9, 1, (unsigned char)((int)('0') + (health / 100)), BLACK, GREEN);
+  } else {
+    SET_PIX(9, 1, ' ', BLACK, GREEN);
+  }
+  if (health >= 10) {
+    SET_PIX(10, 1, (unsigned char)((int)('0') + ((health%100) / 10)), BLACK, GREEN);
+  } else {
+    SET_PIX(10, 1, ' ', BLACK, GREEN);
+  }
+  SET_PIX(11, 1, (unsigned char)((int)('0') + (health%10)), BLACK, GREEN);
+}
+
+void draw_score (GameState* gs) {
+  SET_PIX(1, 2, 'S', BLACK, GREEN);
+  SET_PIX(2, 2, 'c', BLACK, GREEN);
+  SET_PIX(3, 2, 'o', BLACK, GREEN);
+  SET_PIX(4, 2, 'r', BLACK, GREEN);
+  SET_PIX(5, 2, 'e', BLACK, GREEN);
+  SET_PIX(6, 2, ':', BLACK, GREEN);
+  SET_PIX(7, 2, ' ', BLACK, GREEN);
+  SET_PIX(8, 2, ' ', BLACK, GREEN);
+
+  unsigned score  = gs->left.score + gs->right.score;
+
+  if (score >= 100) {
+    SET_PIX(9, 2, (unsigned char)((int)('0') + (score / 100)), BLACK, GREEN);
+  } else {
+    SET_PIX(9, 2, ' ', BLACK, GREEN);
+  }
+  if (score >= 10) {
+    SET_PIX(10, 2, (unsigned char)((int)('0') + ((score%100) / 10)), BLACK, GREEN);
+  } else {
+    SET_PIX(10, 2, ' ', BLACK, GREEN);
+  }
+  SET_PIX(11, 2, (unsigned char)((int)('0') + (score%10)), BLACK, GREEN);
+}
+
 void display (GameState* gs) {
   // Draw border
   clear();
   draw_paddles(gs);
   draw_balls(gs->left.balls, 0);
   draw_balls(gs->right.balls, WIDTH/2);
+  draw_health(gs);
+  draw_score(gs);
   draw_border();
 }
