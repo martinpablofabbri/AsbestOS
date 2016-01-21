@@ -88,7 +88,7 @@ void draw_ball (Ball* ball, unsigned left_offset) {
 void draw_balls (ball_list* balls, unsigned left_offset) {
   ball_list* cur = balls;
   while (cur) {
-    draw_ball(cur->ball, left_offset);
+    draw_ball(&cur->ball, left_offset);
     cur = cur->next;
   }
 }

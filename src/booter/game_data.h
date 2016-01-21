@@ -15,7 +15,9 @@ typedef struct {
 } Ball;
 
 typedef struct ball_node{
-  Ball *ball;
+  Ball ball;
+  // 1 if in use, 0 if free
+  int in_use;
   struct ball_node *prev;
   struct ball_node *next;
 } ball_list;

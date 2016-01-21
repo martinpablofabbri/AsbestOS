@@ -5,9 +5,39 @@
 #include "rand.h"
 #include <limits.h>
 
+#define NUM_BALLS 30
+static ball_list all_balls[NUM_BALLS];
+
+// Makes sure all balls are free
+void init_balls() {
+  int i;
+  for (i=0; i<NUM_BALLS; i++) {
+    all_balls[i].in_use = 0;
+  }
+}
+
+// Returns a pointer to a new ball_list, or 0 on failure
+ball_list* new_ball() {
+  int i;
+  for (i=0; i<NUM_BALLS; i++) {
+    if (all_balls[i].in_use == 0) {
+      // This ball is free
+      ball_list* b = &all_balls[i];
+      b->in_use = 1;
+      return b;
+    }
+  }
+  return 0;
+}
+
+void free_ball(ball_list* b) {
+  b->in_use = 0;
+}
+
 void update_game(GameState* gs);
 
 void reset_game_state(GameState* gs) {
+  init_balls();
   gs->difficulty = START_DIFFICULTY;
 
   gs->left.paddle_pos = 0.5;
@@ -21,6 +51,8 @@ void reset_game_state(GameState* gs) {
   gs->right.balls = 0;
   gs->right.score = 0;
   gs->right.health = START_HEALTH;
+
+  gs->timer = 0;
 }
 
 /* This is the entry-point for the game! */
@@ -40,7 +72,7 @@ void c_start(void) {
     get_keyboard_input();
     update_game(&s);
     display(&s);
-    sleep_cs(100);
+    sleep_cs(1);
   }
 }
 
@@ -54,37 +86,31 @@ void update_game(GameState* game) {
     game->difficulty++;
   }
 
-  /*
+
   if (game->timer % 20 == 0) {
     // Add a new ball at a rate of 5 / second
 
     // Left Ball
-    Ball newLeftBall;
-    // TODO: Did I do this right?
-    newLeftBall.x = float(rand()) / float(UINT_MAX);
-    newLeftBall.y = 0.0;
-    newLeftBall.ball_type = 0;
+    ball_list *newLeftBallEntry = new_ball();
+    if (newLeftBallEntry) {
+      Ball* newLeftBall = &newLeftBallEntry->ball;
 
-    ball_list *newLeftBallEntry = (ball_list*) malloc(sizeof(ball_list*));
-    newLeftBallEntry->ball = newLeftBall;
-    newLeftBallEntry->next = game->left.balls;
-    newLeftBallEntry->prev = game->left.balls->prev;
-    game->left.balls->prev = newLeftBallEntry;
-    game->left.balls = newLeftBallEntry;
+      newLeftBallEntry->next = game->left.balls;
+      if (game->left.balls) {
+	newLeftBallEntry->prev = game->left.balls->prev;
+	game->left.balls->prev = newLeftBallEntry;
+      } else {
+	newLeftBallEntry->prev = newLeftBallEntry;
+      }
+      game->left.balls = newLeftBallEntry;
 
-    // Right Ball
-    Ball newRightBall;
-    newRightBall.x = float(rand()) / float(UINT_MAX);
-    newRightBall.y = 0.0;
-    newRightBall.ball_type = 0;
+      newLeftBall->x = (float)(rand()) / (float)(UINT_MAX);
+      newLeftBall->y = 0.0;
+      newLeftBall->ball_type = 0;
+    }
 
-    ball_list *newRightBallEntry = (ball_list*) malloc(sizeof(ball_list*));
-    newRightBallEntry->ball = newRightBall;
-    newRightBallEntry->next = game->right.balls;
-    newRightBallEntry->prev = game->right.balls->prev;
-    game->right.balls->prev = newRightBallEntry;
-    game->right.balls = newRightBallEntry;
-    }*/
+    // TODO(keegan): copy for right balls
+  }
 
   /*********************************
    * UPDATE PADDLES ON KEY PRESSES *
@@ -108,7 +134,6 @@ void update_game(GameState* game) {
       game->right.paddle_pos -= 0.05;
     }
   }
-
   else if (is_pressed(L_KEY)) {
     if (game->right.paddle_pos < 0.95) {
       game->right.paddle_pos += 0.05;
@@ -117,18 +142,18 @@ void update_game(GameState* game) {
 
   /**********************************
    * UPDATE BALLS FALLING WITH TIME *
-   **********************************
+   **********************************/
   ball_list* currLeftBalls = game->left.balls;
   // Move Balls down a little
-  while (currLeftBalls != NULL)  {
+  while (currLeftBalls != 0)  {
     currLeftBalls->ball.y += 0.01 * game->difficulty;
     // Go to next Ball
     currLeftBalls = currLeftBalls->next;
   }
 
-  ball_list* currRightBalls->next = game->right.balls;
+  ball_list* currRightBalls = game->right.balls;
   // Move Balls down a little
-  while (currRightBalls != NULL)  {
+  while (currRightBalls != 0)  {
     currRightBalls->ball.y += 0.01 * game->difficulty;
     // Go to next Ball
     currRightBalls = currRightBalls->next;
@@ -136,32 +161,33 @@ void update_game(GameState* game) {
 
   /************************
    * CHECK IF CAUGHT BALL *
-   ************************
+   ************************/
   ball_list* lastLeftBall = game->left.balls->prev;
-  if (lastLeftBall->ball->y > 1) {
-    if (game->left.paddle_pos + 0.05 > lastLeftBall->ball.x) {
-      if (game->left.paddle_pos - 0.05 < lastLeftBall->ball.x) {
+  if (lastLeftBall->ball.y > 1) {
+    if (game->left.paddle_pos + game->left.paddle_width / 2 > lastLeftBall->ball.x) {
+      if (game->left.paddle_pos - game->left.paddle_width / 2 < lastLeftBall->ball.x) {
         // paddle hit ball
         game->left.score++;
-        lastLeftBall->prev.next == NULL;
-        // TODO:free(lastLeftBall.ball); ??
-        free(lastLeftBall);
       } else {
         // paddle didn't hit ball
         game->left.health--;
-        lastLeftBall->prev.next == NULL;
-        // TODO:free(lastLeftBall.ball); ??
-        free(lastLeftBall);
       }
     } else {
       // paddle didn't hit ball
       game->left.health--;
-      lastLeftBall->prev.next == NULL;
-      // TODO:free(lastLeftBall.ball); ??
-      free(lastLeftBall);
     }
+    // Remove the last left ball from the list
+    if (lastLeftBall->prev == lastLeftBall) {
+      // It's the last ball left
+      game->left.balls = 0;
+    } else {
+      lastLeftBall->prev->next = 0;
+      game->left.balls->prev = lastLeftBall->prev;
+    }
+    free_ball(lastLeftBall);
   }
-
+  
+  /*
   ball_list* lastRightBall = game->right.balls->prev;
   if (lastRightBall->ball->y > 1) {
     if (game->right.paddle_pos + 0.05 > lastRightBall->ball.x) {
