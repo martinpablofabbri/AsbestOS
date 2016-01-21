@@ -21,7 +21,7 @@
 	# We choose 0x00020000 (2000:0000 or equivalent), just because.  This
 	# would give us hundreds of KB of memory to use, but we won't use
 	# even a fraction of that space.
-	# 
+	#
 	# At this point, %dl will be the drive number of the boot device
 	# (i.e. the disk that the bootloader # was loaded off of).
 	# This allows us to load additional data from the boot disk.
@@ -64,19 +64,9 @@ boot_start:
 	int	$0x13
 	# If the operation failed, CF is set
 	jc	boot_fail
-	
+
 	mov	$STR_LOADED, %si
 	call	print_str
-
-	#---------------------------------------------------------------------
-	# TODO:  If you want to do anything else with the computer hardware
-	#        using the BIOS, here is the place to do it.  After this we
-	#        will transition into 32-bit protected mode, and the BIOS will
-	#        no longer be available to use.
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
-	#        (OR IF YOU DECIDE YOU DON'T WANT TO PUT ANYTHING HERE.)
-	#---------------------------------------------------------------------
 
 	#=====================================================================
 	# Next, set up for transition from 16-bit real mode to 32-bit
@@ -91,12 +81,12 @@ start_protected:
 
 	# setup GDT
 	data32 addr32 lgdt gdtdesc
-	
+
 	# Enable protected mode
 	mov	%cr0, %eax
 	or	$CR0_PE, %eax
 	mov	%eax, %cr0
-	
+
 	# We're now in protected mode, but still in a 16-bit segment.  The
 	# CPU still has the real-mode code segment cached in %cs's segment
 	# descriptor.  We need to reload %cs, and the easiest way is to use a
@@ -133,8 +123,8 @@ call_c_entry:
 	movl $PROGRAM_BASE_ADDR, %ebx
 	addl $E_ENTRY_OFFSET, %ebx
 	movl (%ebx), %eax
-	call *%eax	
-	
+	call *%eax
+
 	#=====================================================================
 	# The rest of this file contains helper functions for the 16-bit
 	# portion of the bootloader, so switch back to 16-bit code generation.

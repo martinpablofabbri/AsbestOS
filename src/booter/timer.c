@@ -42,11 +42,6 @@
 #define PIT_MODE_CMD   0x43
 
 
-/* TODO:  You can create static variables here to hold timer state.
- *
- *        You should probably declare variables "volatile" so that the
- *        compiler knows they can be changed by exceptional control flow.
- */
 volatile unsigned delay;
 
 

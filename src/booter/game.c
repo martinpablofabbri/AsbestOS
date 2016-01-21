@@ -255,7 +255,7 @@ void update_game(GameState* game) {
   }
 
   // Check for end of game
-  if (game->right.health == 0 || game->right.health == 0) {
+  if (game->left.health <= 0 || game->right.health <= 0) {
     // Died :(
     reset_game_state(game);
   }
