@@ -1,7 +1,7 @@
 typedef struct
 {
-  HalfBoard left;
-  HalfBoard right;
+  HalfBoard* left;
+  HalfBoard* right;
   int difficulty;
   int timer;
 } Game;
@@ -10,6 +10,7 @@ typedef struct
 {
     float paddlePos;
     Balls* balls;
+    Balls* lastBall;
     int score;
     int health;
 } HalfBoard;
