@@ -2,6 +2,8 @@
 #include "keyboard.h"
 #include "video.h"
 #include "game_data.h"
+#include "rand.h"
+#include <limits.h>
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -32,7 +34,33 @@ void update_game(game_state game) {
 
   if (game.timer % 20 == 0) {
     // Add a new ball at a rate of 5 / second
-    // TODO: Add new ball with random x and y = 0 at beginning of balls list
+
+    // Left Ball
+    Ball newLeftBall;
+    // TODO: Did I do this right?
+    newLeftBall.x = float(rand()) / float(UINT_MAX);
+    newLeftBall.y = 0.0;
+    newLeftBall.ball_type = 0;
+
+    ball_list *newLeftBallEntry = (ball_list*) malloc(sizeof(ball_list*));
+    newLeftBallEntry->ball = newLeftBall;
+    newLeftBallEntry->next = game.left.balls;
+    newLeftBallEntry->prev = game.left.balls->prev;
+    game.left.balls->prev = newLeftBallEntry;
+    game.left.balls = newLeftBallEntry;
+
+    // Right Ball
+    Ball newRightBall;
+    newRightBall.x = float(rand()) / float(UINT_MAX);
+    newRightBall.y = 0.0;
+    newRightBall.ball_type = 0;
+
+    ball_list *newRightBallEntry = (ball_list*) malloc(sizeof(ball_list*));
+    newRightBallEntry->ball = newRightBall;
+    newRightBallEntry->next = game.right.balls;
+    newRightBallEntry->prev = game.right.balls->prev;
+    game.right.balls->prev = newRightBallEntry;
+    game.right.balls = newRightBallEntry;
   }
 
   /*********************************
@@ -92,19 +120,22 @@ void update_game(game_state game) {
       if (game.left.paddle_pos - 0.05 < lastLeftBall->ball.x) {
         // paddle hit ball
         game.left.score++;
-        lastLeftBall->prev == NULL;
-        // TODO: free lastLeftBall;
+        lastLeftBall->prev.next == NULL;
+        // TODO:free(lastLeftBall.ball); ??
+        free(lastLeftBall);
       } else {
         // paddle didn't hit ball
         game.left.health--;
-        lastLeftBall->prev == NULL;
-        // TODO: free lastLeftBall;
+        lastLeftBall->prev.next == NULL;
+        // TODO:free(lastLeftBall.ball); ??
+        free(lastLeftBall);
       }
     } else {
       // paddle didn't hit ball
       game.left.health--;
-      lastLeftBall->prev == NULL;
-      // TODO: free lastLeftBall;
+      lastLeftBall->prev.next == NULL;
+      // TODO:free(lastLeftBall.ball); ??
+      free(lastLeftBall);
     }
   }
 
@@ -114,19 +145,22 @@ void update_game(game_state game) {
       if (game.right.paddle_pos - 0.05 < lastRightBall->ball.x) {
         // paddle hit ball
         game.right.score++;
-        lastRightBall->prev == NULL;
-        // TODO: free lastRightBall;
+        lastRightBall->prev.next == NULL;
+        // TODO:free(lastRightBall.ball); ??
+        free(lastRightBall);
       } else {
         // paddle didn't hit ball
         game.right.health--;
-        lastRightBall->prev == NULL;
-        // TODO: free lastRightBall;
+        lastRightBall->prev.next == NULL;
+        // TODO:free(lastRightBall.ball); ??
+        free(lastRightBall);
       }
     } else {
       // paddle didn't hit ball
       game.right.health--;
-      lastRightBall->prev == NULL;
-      // TODO: free lastRightBall;
+      lastRightBall->prev.next == NULL;
+      // TODO:free(lastRightBall.ball); ??
+      free(lastRightBall);
     }
   }
 }
