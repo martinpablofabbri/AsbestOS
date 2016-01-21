@@ -1,4 +1,5 @@
 #include "interrupts.h"
+#include "keyboard.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -13,7 +14,15 @@ void c_start(void) {
   init_keyboard();
   enable_interrupts();
 
-    /* Loop forever, so that we don't fall back into the bootloader code. */
-    while (1) {}
-}
+#define VIDEO_BUFFER ((void *) 0xB8000)
 
+  /* Loop forever, so that we don't fall back into the bootloader code. */
+  while (1) {
+    get_keyboard_input();
+    if (is_pressed(A_KEY)) {
+      ((char*)VIDEO_BUFFER)[0] = 'A';
+    } else {
+      ((char*)VIDEO_BUFFER)[0] = 'a';
+    }
+  }
+}
