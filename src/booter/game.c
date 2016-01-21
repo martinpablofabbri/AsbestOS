@@ -1,4 +1,5 @@
 #include "interrupts.h"
+#include "game_data.h"
 
 /* This is the entry-point for the game! */
 void c_start(void) {
