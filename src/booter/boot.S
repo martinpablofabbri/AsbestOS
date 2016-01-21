@@ -44,13 +44,27 @@ boot_start:
 	mov	$STR_LOADING, %si
 	call	print_str
 
-	#---------------------------------------------------------------------
-	# TODO:  Load the remainder of the program into memory using int 10h
-	#        "Extended Read Operation."  If it fails, jump to boot_fail.
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
-	#---------------------------------------------------------------------
+	# Set up disk access packet (DAP)
+	# LBA
+	push	$0x0000
+	push	$0x0000
+	push	$0x0000
+	push	$0x0001
+	# segment:offset to receive data
+	push	$0x2000
+	push	$0x0000
+	# dap[0x00] - dap[0x03]
+	# Number of 512 byte sectors to copy
+	push	$0x0010
+	push	$0x0010
 
+	mov	$0x42, %ah
+	mov 	%sp, %si
+
+	int	$0x13
+	# If the operation failed, CF is set
+	jc	boot_fail
+	
 	mov	$STR_LOADED, %si
 	call	print_str
 
@@ -72,45 +86,17 @@ boot_start:
 
 start_protected:
 
-	#---------------------------------------------------------------------
-	# TODO:  Switch from real mode into protected mode.  The process is
-	#        straightforward:
-	#
-	#        1)  Disable interrupts, since any interrupt during this
-	#            process would demolish us.  (We don't turn interrupts
-	#            back on until we are safely in our C program, and have
-	#            set up an Interrupt Descriptor Table.)
-	#
-	#        2)  Set the Global Descriptor Table Register (GDTR) to our
-	#            simple Global Descriptor Table specified at the end of
-	#            the boot-loader.  You will need to write it like this,
-	#            since we are still in 16-bit real mode:
-	#
-	#            data32 addr32 lgdt gdtdesc
-	#
-	#            (We need a data32 prefix to ensure that all 32 bits of
-	#            the GDT descriptor are loaded; default is to load only
-	#            24 bits.  The CPU doesn't need an addr32 prefix but ELF
-	#            doesn't do 16-bit relocations.)
-	#
-	#        3)  Turn on protected mode by modifying Control Register cr0.
-	#            See IA32 Manual Volume 3A, Section 2.5 for details of
-	#            which bit(s) to set.  Don't turn on paging - we don't
-	#            need it!  Also, you should not modify any other bits in
-	#            cr0:  read it, OR in the appropriate bit(s), then write
-	#            it back.
-	#
-	#            You should use the constants in the boot.h header file
-	#            for this step, to make your code more readable.
-	#
-	#        See also IA32 Manual Volume 3A, Section 8.9.1 for the general
-	#        overview.  (We only do the parts that are relevant to our
-	#        needs in this project!)
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
-	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
-	#---------------------------------------------------------------------
+	# disable interrupts
+	cli
 
+	# setup GDT
+	data32 addr32 lgdt gdtdesc
+	
+	# Enable protected mode
+	mov	%cr0, %eax
+	or	$CR0_PE, %eax
+	mov	%eax, %cr0
+	
 	# We're now in protected mode, but still in a 16-bit segment.  The
 	# CPU still has the real-mode code segment cached in %cs's segment
 	# descriptor.  We need to reload %cs, and the easiest way is to use a
@@ -141,26 +127,14 @@ call_c_entry:
 	cld			# C code expects this...
 	movl $0, %ebp		# Null-terminate the program's backtrace
 
-	#---------------------------------------------------------------------
-	# TODO:  Call the entry-point of the C program!  The program is
-	#        compiled and linked into an ELF file, so the file's ELF
-	#        header will specify the entry-point into the program.  See
-	#        the e_entry field; it is a 32-bit value.
-	#
-	#        The ELF-header is the very first data-structure in the data
-	#        that was loaded by the boot-loader, so the e_entry field
-	#        will be at a fixed offset from the start of the file data.
-	#
-	#        You will need to use an indirect call, where the address to
-	#        call is in a register.  The format is:  call *%somereg
-	#
-	#        Don't forget that you are calling a C function, so follow
-	#        cdecl!
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
-	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
-	#---------------------------------------------------------------------
-
+	# Call the entry-point of the C program
+	# Caller has no registers to save or arguments to push,
+	# so there's not much to do for CDECL besides calling the function
+	movl $PROGRAM_BASE_ADDR, %ebx
+	addl $E_ENTRY_OFFSET, %ebx
+	movl (%ebx), %eax
+	call *%eax	
+	
 	#=====================================================================
 	# The rest of this file contains helper functions for the 16-bit
 	# portion of the bootloader, so switch back to 16-bit code generation.

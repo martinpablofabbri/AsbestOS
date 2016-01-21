@@ -11,6 +11,7 @@
 #define TIMER_INTERRUPT 0x20
 #define KEYBOARD_INTERRUPT 0x21
 
+#define DEFAULT_TYPE_ATTR 0x8E
 
 void init_interrupts(void);
 void install_interrupt_handler(int num, void *handler);

@@ -1,4 +1,6 @@
 #include "timer.h"
+#include "handlers.h"
+#include "interrupts.h"
 #include "ports.h"
 
 /*============================================================================
@@ -45,6 +47,7 @@
  *        You should probably declare variables "volatile" so that the
  *        compiler knows they can be changed by exceptional control flow.
  */
+volatile unsigned delay;
 
 
 void init_timer(void) {
@@ -61,9 +64,19 @@ void init_timer(void) {
     outb(PIT_CHAN0_DATA, 0x9c);
     outb(PIT_CHAN0_DATA, 0x2e);
 
-    /* TODO:  Initialize other timer state here. */
+    delay = 0;
+    install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
+}
 
-    /* TODO:  You might want to install your timer interrupt handler
-     *        here as well.
-     */
+void timer_event () {
+  if (delay)
+    delay--;
+}
+
+/**
+ * Sleep for the specified number of centi-seconds
+ */
+void sleep_cs (unsigned cs) {
+  delay = cs;
+  while (delay) {}
 }
