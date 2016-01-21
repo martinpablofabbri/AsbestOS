@@ -72,7 +72,7 @@ void c_start(void) {
     get_keyboard_input();
     update_game(&s);
     display(&s);
-    sleep_cs(1);
+    sleep_cs(2);
   }
 }
 
@@ -227,5 +227,11 @@ void update_game(GameState* game) {
       game->right.balls->prev = lastRightBall->prev;
     }
     free_ball(lastRightBall);
+  }
+
+  // Check for end of game
+  if (game->right.health == 0 || game->right.health == 0) {
+    // Died :(
+    reset_game_state(game);
   }
 }
