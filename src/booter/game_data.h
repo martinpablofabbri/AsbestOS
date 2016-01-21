@@ -36,6 +36,7 @@ typedef struct { // GameState
 
   // Higher = harder
   int difficulty;
+  int timer;
 } GameState;
 
 #endif  // SRC_BOOTER_GAME_DATA_H

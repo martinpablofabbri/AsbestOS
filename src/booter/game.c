@@ -14,24 +14,26 @@ void c_start(void) {
   /* Loop forever, so that we don't fall back into the bootloader code. */
   while (1) {
     get_keyboard_input();
+    // update_game(game);
     sleep_cs(100);
   }
 }
 
 void update_game(game_state game) {
 
-/* TODO: - UPDATE DIFFICULTY & NEW BALLS WITH TIME
   game.timer++;
 
   if (game.timer % 500 == 0) {
-    // visible time step
+    // Make harder every five seconds by speeding up balls
+    // (harder levels have faster-falling balls,
+    //  but you see less balls at a given time slice)
     game.difficulty++;
   }
 
   if (game.timer % 20 == 0) {
+    // Add a new ball at a rate of 5 / second
     // TODO: Add new ball with random x and y = 0 at beginning of balls list
   }
-*/
 
   /*********************************
    * UPDATE PADDLES ON KEY PRESSES *
@@ -85,7 +87,7 @@ void update_game(game_state game) {
    * CHECK IF CAUGHT BALL *
    ************************/
   ball_list* lastLeftBall = game.left.balls->prev;
-  if (lastLeftBall->ball->y < 1) {
+  if (lastLeftBall->ball->y > 1) {
     if (game.left.paddle_pos + 0.05 > lastLeftBall->ball.x) {
       if (game.left.paddle_pos - 0.05 < lastLeftBall->ball.x) {
         // paddle hit ball
@@ -107,7 +109,7 @@ void update_game(game_state game) {
   }
 
   ball_list* lastRightBall = game.right.balls->prev;
-  if (lastRightBall->ball->y < 1) {
+  if (lastRightBall->ball->y > 1) {
     if (game.right.paddle_pos + 0.05 > lastRightBall->ball.x) {
       if (game.right.paddle_pos - 0.05 < lastRightBall->ball.x) {
         // paddle hit ball
@@ -127,5 +129,4 @@ void update_game(game_state game) {
       // TODO: free lastRightBall;
     }
   }
-
 }
