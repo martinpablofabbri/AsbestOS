@@ -38,17 +38,48 @@ void draw_border () {
   // Top
   unsigned i;
   for (i=0; i<WIDTH; i++) {
-    SET_PIX(i,0,'-',CYAN,GREEN);
-    SET_PIX(i,HEIGHT-1,'-',CYAN,GREEN);
+    SET_PIX(i,0,'-',CYAN,RED);
+    SET_PIX(i,HEIGHT-1,'-',CYAN,RED);
   }
   for (i=1; i<HEIGHT-1; i++) {
-    SET_PIX(0,i,'|',CYAN,GREEN);
-    SET_PIX(WIDTH-1,i,'|',CYAN,GREEN);
-    SET_PIX(WIDTH/2,i,'|',CYAN,GREEN);
+    SET_PIX(0,i,'|',CYAN,RED);
+    SET_PIX(WIDTH-1,i,'|',CYAN,RED);
+    SET_PIX(WIDTH/2,i,'|',CYAN,RED);
   }
+}
+
+void draw_paddles(GameState* gs) {
+  // Left side
+  float pos = gs->left.paddle_pos;
+  float width = gs->left.paddle_width;
+  float left = pos - width / 2;
+  float right = pos + width / 2;
+  left = (left < 0) ? 0 : left;
+  right = (right > 1) ? 1 : right;
+  unsigned left_idx = 1 + (int)((WIDTH / 2 - 1)*left);
+  unsigned right_idx = 1 + (int)((WIDTH / 2 - 1)*right);
+  int i;
+  for (i=left_idx; i<=right_idx; i++) {
+    SET_PIX(i, HEIGHT-2, '=',GREEN,BLACK);
+  }
+
+  // Right side
+  pos = gs->right.paddle_pos;
+  width = gs->right.paddle_width;
+  left = pos - width / 2;
+  right = pos + width / 2;
+  left = (left < 0) ? 0 : left;
+  right = (right > 1) ? 1 : right;
+  left_idx = 1 + WIDTH/2 + (int)((WIDTH / 2 - 1)*left);
+  right_idx = 1 + WIDTH/2 + (int)((WIDTH / 2 - 1)*right);
+  for (i=left_idx; i<=right_idx; i++) {
+    SET_PIX(i, HEIGHT-2, '=',GREEN,BLACK);
+  }
+
 }
 
 void display (GameState* gs) {
   // Draw border
   draw_border();
+  draw_paddles(gs);
 }

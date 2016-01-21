@@ -23,6 +23,7 @@ typedef struct ball_node{
 typedef struct { // Halfboard
   // Horizontal paddle position, in range [0=leftmost, 1=rightmost]
   float paddle_pos;
+  float paddle_width;
 
   // Doubly-linked list of balls (has ball, prev, next fields)
   ball_list *balls;

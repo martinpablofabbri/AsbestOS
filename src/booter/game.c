@@ -9,11 +9,13 @@ void reset_game_state(GameState* gs) {
   gs->difficulty = START_DIFFICULTY;
 
   gs->left.paddle_pos = 0.5;
+  gs->left.paddle_width = 0.2;
   gs->left.balls = 0;
   gs->left.score = 0;
   gs->left.health = START_HEALTH;
 
   gs->right.paddle_pos = 0.5;
+  gs->right.paddle_width = 0.2;
   gs->right.balls = 0;
   gs->right.score = 0;
   gs->right.health = START_HEALTH;
