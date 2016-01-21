@@ -219,7 +219,7 @@ void install_interrupt_handler(int num, void *handler) {
      *        INCORPORATE THE ABOVE COMMENTS IF YOU WISH.)
      */
   IDT_Descriptor* desc = &interrupt_descriptor_table[num];
-  intptr_t offset = handler;
+  intptr_t offset = (intptr_t)handler;
   desc->offset_15_0 = offset & 0xFFFF;
   desc->offset_31_16 = (offset >> 0x10) & 0xFFFF;
   desc->selector = SEL_CODESEG;

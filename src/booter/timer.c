@@ -70,3 +70,7 @@ void init_timer(void) {
      */
     install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
 }
+
+void timer_event () {
+  
+}
