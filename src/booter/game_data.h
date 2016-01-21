@@ -1,6 +1,9 @@
 #ifndef SRC_BOOTER_GAME_DATA_H
 #define SRC_BOOTER_GAME_DATA_H
 
+#define START_HEALTH 100
+#define START_DIFFICULTY 1
+
 // Ball, holds position and type
 typedef struct {
   // Horizontal position of ball, in range [0=leftmost, 1=rightmost]
@@ -12,7 +15,9 @@ typedef struct {
 } Ball;
 
 typedef struct ball_node{
-  Ball *ball;
+  Ball ball;
+  // 1 if in use, 0 if free
+  int in_use;
   struct ball_node *prev;
   struct ball_node *next;
 } ball_list;
@@ -20,6 +25,7 @@ typedef struct ball_node{
 typedef struct { // Halfboard
   // Horizontal paddle position, in range [0=leftmost, 1=rightmost]
   float paddle_pos;
+  float paddle_width;
 
   // Doubly-linked list of balls (has ball, prev, next fields)
   ball_list *balls;
@@ -36,6 +42,9 @@ typedef struct { // GameState
 
   // Higher = harder
   int difficulty;
+  int timer;
 } GameState;
+
+void reset_game_state(GameState* gs);
 
 #endif  // SRC_BOOTER_GAME_DATA_H
