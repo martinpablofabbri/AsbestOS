@@ -304,6 +304,18 @@ void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
 }
 
+/*! Donates priority from the current thread to t. */
+void thread_donate_priority(struct thread* t) {
+    ASSERT(intr_get_level() == INTR_OFF);
+    //TODO(keegan): uncommen the following line
+    //ASSERT(t->priority <= thread_get_priority());
+    struct thread* me = thread_current();
+    me->donee = t;
+    list_push_back(&t->donors, &me->donor_elem);
+    //TODO(keegan): update t->priority
+}
+
+
 /*! Returns the current thread's priority. */
 int thread_get_priority(void) {
     return thread_current()->priority;
