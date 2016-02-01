@@ -99,12 +99,19 @@ struct thread {
                                            runs at. */
     int base_priority;                  /*!< Priority which the
 					  process assigns to itself. */
-    struct list_elem allelem;           /*!< List element for all threads list. */
+    struct list_elem allelem;           /*!< List element for all
+					  threads list. */
+    struct list donors;                 /*!< List of all threads which
+                                           have donated priority to
+                                           this thread. */
+    struct thread* donee;               /*!< Pointer to the thread
+					  receiving a donation. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    struct list_elem donor_elem;        /*!< Donor element. */
     /**@}*/
 
 #ifdef USERPROG
