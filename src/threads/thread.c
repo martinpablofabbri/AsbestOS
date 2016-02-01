@@ -338,6 +338,8 @@ void thread_update_priority(struct thread* t) {
     for (e = list_begin(&t->donors); e != list_end(&t->donors);
          e = list_next(e)) {
         struct thread *d = list_entry(e, struct thread, donor_elem);
+	if (d->donee)
+	    thread_update_priority(d);
 	if (d->priority > max)
 	    max = d->priority;
     }
