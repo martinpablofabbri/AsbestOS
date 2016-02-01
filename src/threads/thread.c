@@ -208,6 +208,9 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Add to run queue. */
     thread_unblock(t);
 
+    if (priority > thread_get_priority())
+	thread_yield();
+
     return tid;
 }
 
@@ -465,12 +468,14 @@ static struct thread * next_thread_to_run(void) {
 
     int i;
     for (i = 63; i >= 0; --i) {
-	if (list_empty(&ready_priority_lists[i])) {
-	    continue;
-	} else {
-	    return list_entry(list_pop_front(&ready_priority_lists[i]),
-			      struct thread,
-			      elem);
+	while (!list_empty(&ready_priority_lists[i])) {
+	    struct thread* t;
+	    t = list_entry(list_pop_front(&ready_priority_lists[i]),
+			   struct thread,
+			   elem);
+	    if (t->status == THREAD_READY) {
+		return t;
+	    }
 	}
     }
     // no ready threads
