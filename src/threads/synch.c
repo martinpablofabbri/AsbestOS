@@ -110,6 +110,7 @@ void sema_up(struct semaphore *sema) {
 
     old_level = intr_disable();
     if (!list_empty(&sema->waiters)) {
+	// TODO(jalen): Pop the highest priority process
 	struct thread* t = list_entry(list_pop_front(&sema->waiters),
 				      struct thread, elem);
         thread_unblock(t);
