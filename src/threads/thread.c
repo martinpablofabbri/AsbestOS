@@ -346,6 +346,7 @@ void thread_update_priority(struct thread* t) {
 
     if (t->donee)
 	thread_update_priority(t->donee);
+
 }
 
 /*! Donates priority from the current thread to t. */
