@@ -74,6 +74,7 @@ static bool is_thread(struct thread *) UNUSED;
 static void *alloc_frame(struct thread *, size_t size);
 static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
+void thread_update_priority(struct thread* t);
 static tid_t allocate_tid(void);
 
 /*! Initializes the threading system by transforming the code
@@ -327,15 +328,33 @@ void thread_set_priority(int new_priority) {
     }
 }
 
+/*! Updates the priority of t based on its donors. */
+void thread_update_priority(struct thread* t) {
+    //TODO(keegan): Handle recursion? Update priority of children?
+    struct list_elem *e;
+    ASSERT(intr_get_level() == INTR_OFF);
+
+    int max = t->base_priority;
+
+    for (e = list_begin(&t->donors); e != list_end(&t->donors);
+         e = list_next(e)) {
+        struct thread *d = list_entry(e, struct thread, donor_elem);
+	if (d->priority > max)
+	    max = d->priority;
+    }
+    t->priority = max;
+    
+}
+
 /*! Donates priority from the current thread to t. */
 void thread_donate_priority(struct thread* t) {
     ASSERT(intr_get_level() == INTR_OFF);
-    //TODO(keegan): uncommen the following line
+    //TODO(keegan): uncomment the following line
     //ASSERT(t->priority <= thread_get_priority());
     struct thread* me = thread_current();
     me->donee = t;
     list_push_back(&t->donors, &me->donor_elem);
-    //TODO(keegan): update t->priority
+    thread_update_priority(t);
 }
 
 

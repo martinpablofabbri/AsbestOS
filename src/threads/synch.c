@@ -117,10 +117,9 @@ void sema_up(struct semaphore *sema) {
 	if (t->donee) {
 	    t->donee = NULL;
 	    list_remove(&t->donor_elem);
-	    // TODO(keegan): update priority of thread that just lost donor
-	    // Possibly this thread?
 	}
     }
+    thread_update_priority(thread_current());
     sema->value++;
     intr_set_level(old_level);
 }
