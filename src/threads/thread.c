@@ -363,6 +363,24 @@ void thread_update_priority(struct thread* t) {
 	thread_update_priority(t->donee);
 }
 
+/*! Updates the priority of t based on its donors. */
+void thread_update_priority(struct thread* t) {
+    //TODO(keegan): Handle recursion? Update priority of children?
+    struct list_elem *e;
+    ASSERT(intr_get_level() == INTR_OFF);
+
+    int max = t->base_priority;
+
+    for (e = list_begin(&t->donors); e != list_end(&t->donors);
+         e = list_next(e)) {
+        struct thread *d = list_entry(e, struct thread, donor_elem);
+	if (d->priority > max)
+	    max = d->priority;
+    }
+    t->priority = max;
+    
+}
+
 /*! Donates priority from the current thread to t. */
 void thread_donate_priority(struct thread* t) {
     ASSERT(intr_get_level() == INTR_OFF);
