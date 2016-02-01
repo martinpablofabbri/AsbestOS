@@ -107,6 +107,7 @@ struct thread {
                                            this thread. */
     struct thread* donee;               /*!< Pointer to the thread
 					  receiving a donation. */
+
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */

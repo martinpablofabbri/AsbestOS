@@ -319,9 +319,9 @@ void thread_foreach(thread_action_func *func, void *aux) {
 void thread_set_priority(int new_priority) {
     struct thread* me = thread_current();
     int old_priority = me->priority;
-    me->priority = new_priority;
+    me->base_priority = new_priority;
 
-    if (new_priority < old_priority) {
+    if (me->priority < old_priority) {
 	//list_remove(&me->elem);
 	//add_to_ready_queue(me);
 	thread_yield();
