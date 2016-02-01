@@ -110,7 +110,6 @@ void sema_up(struct semaphore *sema) {
 
     old_level = intr_disable();
     if (!list_empty(&sema->waiters)) {
-	// TODO(jalen): Pop the highest priority process
 	struct thread* t = list_entry(list_pop_front(&sema->waiters),
 				      struct thread, elem);
         thread_unblock(t);
@@ -230,11 +229,18 @@ bool lock_try_acquire(struct lock *lock) {
     make sense to try to release a lock within an interrupt
     handler. */
 void lock_release(struct lock *lock) {
+    //TODO(keegan): Do we have to disable interrupts here?
+    enum intr_level old_level;
+
     ASSERT(lock != NULL);
     ASSERT(lock_held_by_current_thread(lock));
 
+    old_level = intr_disable();
+
     lock->holder = NULL;
     sema_up(&lock->semaphore);
+
+    intr_set_level(old_level);
 }
 
 /*! Returns true if the current thread holds LOCK, false
