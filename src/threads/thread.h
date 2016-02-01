@@ -99,7 +99,6 @@ struct thread {
                                            runs at. */
     int base_priority;                  /*!< Priority which the
 					  process assigns to itself. */
-<<<<<<< HEAD
     struct list_elem allelem;           /*!< List element for all
 					  threads list. */
     struct list donors;                 /*!< List of all threads which
@@ -107,9 +106,7 @@ struct thread {
                                            this thread. */
     struct thread* donee;               /*!< Pointer to the thread
 					  receiving a donation. */
-=======
     struct list_elem allelem;           /*!< List element for all threads list. */
->>>>>>> Add base priority field
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
