@@ -95,7 +95,10 @@ struct thread {
     enum thread_status status;          /*!< Thread state. */
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
-    int priority;                       /*!< Priority. */
+    int priority;                       /*!< Priority which the thread
+                                           runs at. */
+    int base_priority;                  /*!< Priority which the
+					  process assigns to itself. */
     struct list_elem allelem;           /*!< List element for all threads list. */
     /**@}*/
 
