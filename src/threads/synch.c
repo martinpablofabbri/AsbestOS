@@ -107,14 +107,12 @@ bool sema_try_down(struct semaphore *sema) {
 
     This function may be called from an interrupt handler. */
 void sema_up(struct semaphore *sema) {
-    // TODO(keegan): clean up code here
     enum intr_level old_level;
 
     ASSERT(sema != NULL);
 
     old_level = intr_disable();
 
-    struct list_elem *e = NULL;
     struct thread* t = NULL;
 
     while (!list_empty(&sema->waiters)) {
