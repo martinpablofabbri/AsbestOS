@@ -109,8 +109,7 @@ void sema_up(struct semaphore *sema) {
     ASSERT(sema != NULL);
 
     old_level = intr_disable();
-    if (!list_empty(&sema->waiters)) {
-	// TODO(jalen): Pop the highest priority process
+    while (!list_empty(&sema->waiters)) {
 	struct thread* t = list_entry(list_pop_front(&sema->waiters),
 				      struct thread, elem);
         thread_unblock(t);
@@ -235,6 +234,7 @@ void lock_release(struct lock *lock) {
 
     lock->holder = NULL;
     sema_up(&lock->semaphore);
+    thread_yield();
 }
 
 /*! Returns true if the current thread holds LOCK, false
