@@ -37,6 +37,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+list_less_func cmp_sema_priority;
+list_less_func cmp_thread_priority;
+
 /*! Initializes semaphore SEMA to VALUE.  A semaphore is a
     nonnegative integer along with two atomic operators for
     manipulating it:
@@ -327,6 +330,39 @@ void cond_wait(struct condition *cond, struct lock *lock) {
     lock_acquire(lock);
 }
 
+/*! Returns true if the priority of the thread specified by the first
+    argument is less than the priority of the thread specified by the
+    second argument. */
+bool cmp_thread_priority (const struct list_elem *a,
+			  const struct list_elem *b,
+			  void *aux UNUSED) {
+    struct thread *thread_a = list_entry(a, struct thread, elem);
+    struct thread *thread_b = list_entry(b, struct thread, elem);
+
+    return thread_a->priority < thread_b->priority;
+}
+
+/*! Returns true if the priority of the semaphore specified by the
+    first argument is less than the priority of the semaphore
+    specified by the second argument.
+
+    The priority of a semaphore is defined as the maximum priority of
+    the threads waiting on the semaphore. */
+bool cmp_sema_priority (const struct list_elem *a,
+			const struct list_elem *b,
+			void *aux UNUSED) {
+    struct semaphore *sema_a = &list_entry(a, struct semaphore_elem, elem)->semaphore;
+    struct semaphore *sema_b = &list_entry(b, struct semaphore_elem, elem)->semaphore;
+
+    struct list_elem* max_a = list_max(&sema_a->waiters, cmp_thread_priority, NULL);
+    struct list_elem* max_b = list_max(&sema_b->waiters, cmp_thread_priority, NULL);
+    
+    int pri_a = list_entry(max_a, struct thread, elem)->priority;
+    int pri_b = list_entry(max_b, struct thread, elem)->priority;
+
+    return pri_a < pri_b;
+}
+
 /*! If any threads are waiting on COND (protected by LOCK), then
     this function signals one of them to wake up from its wait.
     LOCK must be held before calling this function.
@@ -340,9 +376,13 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(!intr_context ());
     ASSERT(lock_held_by_current_thread (lock));
 
-    if (!list_empty(&cond->waiters)) 
-        sema_up(&list_entry(list_pop_front(&cond->waiters),
+    if (!list_empty(&cond->waiters)) {
+	struct list_elem *max = list_max(&cond->waiters, cmp_sema_priority, NULL);
+	list_remove(max);
+	sema_up(&list_entry(max,
                             struct semaphore_elem, elem)->semaphore);
+
+    }
 }
 
 /*! Wakes up all threads, if any, waiting on COND (protected by
@@ -358,4 +398,3 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
     while (!list_empty(&cond->waiters))
         cond_signal(cond, lock);
 }
-
