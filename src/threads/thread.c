@@ -336,9 +336,8 @@ void thread_set_priority(int new_priority) {
     int old_priority = me->priority;
     me->base_priority = new_priority;
 
+    thread_update_priority(me);
     if (me->priority < old_priority) {
-	//list_remove(&me->elem);
-	//add_to_ready_queue(me);
 	thread_yield();
     }
 }
@@ -346,7 +345,9 @@ void thread_set_priority(int new_priority) {
 /*! Updates the priority of t based on its donors. */
 void thread_update_priority(struct thread* t) {
     struct list_elem *e;
-    ASSERT(intr_get_level() == INTR_OFF);
+    enum intr_level old_level;
+
+    old_level = intr_disable();
 
     int max = t->base_priority;
 
@@ -361,26 +362,8 @@ void thread_update_priority(struct thread* t) {
 
     if (t->donee)
 	thread_update_priority(t->donee);
-}
 
-/*! Updates the priority of t based on its donors. */
-void thread_update_priority(struct thread* t) {
-    struct list_elem *e;
-    ASSERT(intr_get_level() == INTR_OFF);
-
-    int max = t->base_priority;
-
-    for (e = list_begin(&t->donors); e != list_end(&t->donors);
-         e = list_next(e)) {
-        struct thread *d = list_entry(e, struct thread, donor_elem);
-	if (d->priority > max)
-	    max = d->priority;
-    }
-
-    t->priority = max;
-
-    if (t->donee)
-	thread_update_priority(t->donee);
+    intr_set_level(old_level);
 }
 
 /*! Donates priority from the current thread to t. */

@@ -106,7 +106,6 @@ struct thread {
                                            this thread. */
     struct thread* donee;               /*!< Pointer to the thread
 					  receiving a donation. */
-    struct list_elem allelem;           /*!< List element for all threads list. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
