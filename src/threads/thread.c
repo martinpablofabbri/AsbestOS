@@ -1,5 +1,6 @@
 #include "threads/thread.h"
 #include <debug.h>
+#include <devices/timer.h>
 #include <stddef.h>
 #include <random.h>
 #include <stdio.h>
@@ -108,6 +109,8 @@ void thread_init(void) {
     init_thread(initial_thread, "main", PRI_DEFAULT);
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
+
+    thread_load_avg = int2fixed(0);
 }
 
 /*! Starts preemptive thread scheduling by enabling interrupts.
@@ -140,11 +143,20 @@ void thread_tick(void) {
     else
         kernel_ticks++;
 
-    /* Enforce preemption. */
+    /* Enforce preemption and update priorities. */
     if (++thread_ticks >= TIME_SLICE) {
 	if (thread_mlfqs)
 	    thread_foreach(thread_update_advanced_priority, NULL);
         intr_yield_on_return();
+    }
+
+    if (timer_ticks() % TIMER_FREQ == 0) {
+	/* Update average load. */
+	int ready_threads = 3;
+	//TODO(keegan): correctly update ready_threads
+	thread_load_avg = fixedAdd(fixedMultiplyInt(thread_load_avg, 59),
+				   int2fixed(ready_threads));
+	thread_load_avg = fixedDivideInt(thread_load_avg, 60);
     }
 }
 
@@ -405,8 +417,7 @@ int thread_get_nice(void) {
 
 /*! Returns 100 times the system load average. */
 int thread_get_load_avg(void) {
-    /* Not yet implemented. */
-    return 0;
+    return fixed2intRoundClosest(fixedMultiplyInt(thread_load_avg, 100));
 }
 
 /*! Returns 100 times the current thread's recent_cpu value. */
