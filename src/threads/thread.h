@@ -104,7 +104,7 @@ struct thread {
 					  process assigns to itself. */
     int niceness;                       /*!< Niceness, as used by the
 					  advanced scheduler. */
-    float_fp recent_cpu;                   /*!< Recent CPU usage of
+    fixed recent_cpu;                   /*!< Recent CPU usage of
 					  thread */
     struct list_elem allelem;           /*!< List element for all
 					  threads list. */
