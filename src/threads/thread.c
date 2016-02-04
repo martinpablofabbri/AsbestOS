@@ -20,17 +20,12 @@
     of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/*! List of processes in THREAD_READY state, that is, processes
-    that are ready to run but not actually running. */
-/* TODO(jg): remove old code
-static struct list ready_list;
-*/
+/*! Processes in the THREAD_READY state,
+    Array (indexed by priority) of lists of threads */
+static struct list ready_priority_lists[NUM_PRIORITIES];
 
-/*! Array (indexed by priority) of lists of threads */
-static struct list ready_priority_lists[64];
-
-// TODO(jg): function to add a struct thread* to ready_priority_lists
-// Assumes that thread is not already in ready queue
+/*! Add a thread to the ready queue.
+    Assumes that thread is not already in ready queue. */
 void add_to_ready_queue(struct thread *t) {
   list_push_back(&ready_priority_lists[t->priority], &t->elem);
 }
@@ -97,13 +92,9 @@ void thread_init(void) {
 
     lock_init(&tid_lock);
 
-    /* TODO(jg): remove reference to ready_list
-    list_init(&ready_list);
-    */
-
     // Initialize all ready lists 
     int i;
-    for (i = 0; i < 64; ++i) {
+    for (i = PRI_MIN; i <= PRI_MAX; ++i) {
       list_init(&ready_priority_lists[i]);
     }
 
@@ -239,9 +230,6 @@ void thread_unblock(struct thread *t) {
     old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
     add_to_ready_queue(t);
-    /* TODO(jg): remove old code
-    list_push_back(&ready_list, &t->elem);
-    */
     t->status = THREAD_READY;
     intr_set_level(old_level);
 }
@@ -303,9 +291,6 @@ void thread_yield(void) {
     old_level = intr_disable();
     if (cur != idle_thread) {
 	add_to_ready_queue(cur);
-	/* TODO(jg): remove old code
-        list_push_back(&ready_list, &cur->elem);
-	*/
     }
     cur->status = THREAD_READY;
     schedule();
@@ -456,7 +441,7 @@ static struct thread * next_thread_to_run(void) {
   
 
     int i;
-    for (i = 63; i >= 0; --i) {
+    for (i = PRI_MAX; i >= PRI_MIN; --i) {
 	if (list_empty(&ready_priority_lists[i])) {
 	    continue;
 	} else {
@@ -467,13 +452,6 @@ static struct thread * next_thread_to_run(void) {
     }
     // no ready threads
     return idle_thread;
-  
-    /* TODO(jg): remove this old code
-    if (list_empty(&ready_list))
-      return idle_thread;
-    else
-      return list_entry(list_pop_front(&ready_list), struct thread, elem);
-    */
 }
 
 /*! Completes a thread switch by activating the new thread's page tables, and,
