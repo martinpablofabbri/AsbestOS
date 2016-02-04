@@ -400,11 +400,25 @@ void thread_update_donated_priority(struct thread* t) {
 
 /*! Updates the priority of t based on the advanced scheduler. */
 void thread_update_advanced_priority(struct thread* t, void* aux UNUSED) {
-    t->priority = PRI_MAX -
+    int priority;
+    enum intr_level old_level;
+
+    old_level = intr_disable();
+
+    priority = PRI_MAX -
 	fixed2intRoundTowardZero(fixedDivideInt(t->recent_cpu,4)) -
 	(t->niceness * 2);
-    t->priority = (t->priority > PRI_MAX) ? PRI_MAX : t->priority;
-    t->priority = (t->priority < PRI_MIN) ? PRI_MIN : t->priority;
+    priority = (priority > PRI_MAX) ? PRI_MAX : priority;
+    priority = (priority < PRI_MIN) ? PRI_MIN : priority;
+    
+    // Remove from the ready queue it's in
+    if (t->status == THREAD_READY) {
+	list_remove(&t->elem);
+    }
+    t->priority = priority;
+    add_to_ready_queue(t);
+
+    intr_set_level(old_level);
 }
 
 /*! Donates priority from the current thread to t. */
@@ -429,14 +443,15 @@ int thread_get_priority(void) {
 }
 
 /*! Sets the current thread's nice value to NICE. */
-void thread_set_nice(int nice UNUSED) {
-    /* Not yet implemented. */
+void thread_set_nice(int nice) {
+    ASSERT(-20 <= nice);
+    ASSERT(nice <= 20);
+    thread_current()->niceness = nice;
 }
 
 /*! Returns the current thread's nice value. */
 int thread_get_nice(void) {
-    /* Not yet implemented. */
-    return 0;
+    return thread_current()->niceness;
 }
 
 /*! Returns 100 times the system load average. */
