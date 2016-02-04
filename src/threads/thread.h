@@ -111,6 +111,9 @@ struct thread {
     /**@{*/
 #endif
 
+    // Added for alarm clock
+    int64_t clock;
+
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
