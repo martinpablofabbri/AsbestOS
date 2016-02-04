@@ -10,6 +10,8 @@
 #include <list.h>
 #include <stdint.h>
 
+#include "fixed_point.h"
+
 /*! States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING,     /*!< Running thread. */
@@ -100,6 +102,10 @@ struct thread {
                                            runs at. */
     int base_priority;                  /*!< Priority which the
 					  process assigns to itself. */
+    int niceness;                       /*!< Niceness, as used by the
+					  advanced scheduler. */
+    float_fp recent_cpu;                   /*!< Recent CPU usage of
+					  thread */
     struct list_elem allelem;           /*!< List element for all
 					  threads list. */
     struct list donors;                 /*!< List of all threads which
@@ -132,6 +138,7 @@ struct thread {
     If true, use multi-level feedback queue scheduler.
     Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+float_fp thread_load_avg;
 
 void thread_init(void);
 void thread_start(void);
