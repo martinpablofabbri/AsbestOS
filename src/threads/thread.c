@@ -21,8 +21,8 @@
     of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/*! List of processes in THREAD_BLOCKED state. */
-static struct list blocked_list;
+/*! List of processes that are sleeping. */
+static struct list sleep_list;
 
 /*! List of processes in THREAD_READY state, that is, processes
     that are ready to run but not actually running. */
@@ -90,7 +90,7 @@ void thread_init(void) {
     ASSERT(intr_get_level() == INTR_OFF);
 
     lock_init(&tid_lock);
-    list_init(&blocked_list);
+    list_init(&sleep_list);
     list_init(&ready_list);
     list_init(&all_list);
 
@@ -147,11 +147,11 @@ static void wake_thread(void) {
     struct thread * next_thread;
     int64_t new_alarm = 0;
     size_t i;
-    for (i = 0; i < list_size(&blocked_list); i++) {
-        next_thread = list_entry(list_pop_front(&blocked_list), struct thread, elem);
+    for (i = 0; i < list_size(&all_list); i++) {
+        next_thread = list_entry(list_pop_front(&all_list), struct thread, allelem);
         // If thread is blocked for some reason other than sleeping
         if (next_thread->clock == 0) {
-            list_push_back(&blocked_list, &next_thread->elem);
+            list_push_back(&all_list, &next_thread->allelem);
         }
         // If thread needs to be woken up
         else if (next_thread->clock < timer_ticks()) {
@@ -236,7 +236,7 @@ void thread_block(void) {
 
     struct thread * cur = thread_current();
     cur->status = THREAD_BLOCKED;
-    list_push_back(&blocked_list, &cur->elem);
+    // list_push_back(&blocked_list, &cur->elem);
     schedule();
 }
 
