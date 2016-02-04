@@ -110,6 +110,7 @@ void thread_init(void) {
 
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
+    initial_thread->recent_cpu = int2fixed(0);
     init_thread(initial_thread, "main", PRI_DEFAULT);
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
@@ -150,8 +151,15 @@ void thread_tick(void) {
 
     /* Enforce preemption and update priorities. */
     if (++thread_ticks >= TIME_SLICE) {
-	if (thread_mlfqs)
+	if (thread_mlfqs) {
 	    thread_foreach(thread_update_advanced_priority, NULL);
+    	    if (t != idle_thread) {
+	        ++(t->recent_cpu);
+    	    }
+    	    if (timer_ticks() % TIMER_FREQ == 0) {
+	        thread_foreach(thread_update_recent_cpu, void);
+            }
+	}
         intr_yield_on_return();
     }
 
@@ -435,10 +443,22 @@ int thread_get_load_avg(void) {
     return fixed2intRoundClosest(fixedMultiplyInt(thread_load_avg, 100));
 }
 
+thread_update_recent_cpu(struct thread * t, void *aux) {
+    fixed recent_cpu = t->recent_cpu;
+    fixed load_avg = thread_load_avg;
+    fixed num = fixedMultiplyInt(load_avg, 2);
+    fixed den = fixedAddInt(num, 1);
+    fixed scale = fixedDivide(num, den);
+    fixed updated = fixedAddInt(fixedMultiply(scale, recent_cpu),
+				thread->niceness);
+    t->recent_cpu = updated;
+}
+
 /*! Returns 100 times the current thread's recent_cpu value. */
 int thread_get_recent_cpu(void) {
-    /* Not yet implemented. */
-    return 0;
+    struct thread *t = thread_current();
+    fixed scaled = fixedMultiplyInt(t->recent_cpu, 100);
+    return fixed2intRoundClosest(scaled);
 }
 
 /*! Idle thread.  Executes when no other thread is ready to run.
@@ -513,6 +533,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     if (thread_mlfqs) {
 	thread_update_advanced_priority(t, NULL);
+        t->recent_cpu = thread_current()->recent_cpu;
     } else {
 	t->base_priority = priority;
 	t->priority = priority;
