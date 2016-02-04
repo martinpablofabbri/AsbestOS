@@ -152,7 +152,6 @@ static void wake_thread(void) {
         next_thread = list_entry(list_pop_front(&all_list), struct thread, allelem);
         // If thread is blocked for some reason other than sleeping
         if (next_thread->clock == 0) {
-            list_push_back(&all_list, &next_thread->allelem);
         }
         // If thread needs to be woken up
         else if (next_thread->clock < timer_ticks()) {
@@ -160,9 +159,12 @@ static void wake_thread(void) {
             thread_unblock(next_thread);
         }
         // If thread is still sleeping
-        else if (new_alarm == 0 || new_alarm > next_thread->clock)
+        else if (new_alarm == 0 || new_alarm > next_thread->clock) {
             new_alarm = next_thread->clock;
+	}
+	list_push_back(&all_list, &next_thread->allelem);
     }
+    
     set_alarm(new_alarm);
 }
 
