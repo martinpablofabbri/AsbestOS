@@ -96,11 +96,11 @@ int64_t timer_elapsed(int64_t then) {
 void timer_sleep(int64_t ticks) {
     ASSERT(intr_get_level() == INTR_ON);
     if (ticks != 0) {
+        enum intr_level old_level = intr_disable();
         int64_t wakeup_time = timer_ticks() + ticks;
         thread_current()->clock = wakeup_time;
         if (wakeup_time < alarm || alarm < timer_ticks())
             alarm = wakeup_time;
-        enum intr_level old_level = intr_disable();
         thread_block();
         intr_set_level(old_level);
     }
