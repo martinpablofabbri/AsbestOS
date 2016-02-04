@@ -96,13 +96,23 @@ struct thread {
     enum thread_status status;          /*!< Thread state. */
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
-    int priority;                       /*!< Priority. */
-    struct list_elem allelem;           /*!< List element for all threads list. */
+    int priority;                       /*!< Priority which the thread
+                                           runs at. */
+    int base_priority;                  /*!< Priority which the
+					  process assigns to itself. */
+    struct list_elem allelem;           /*!< List element for all
+					  threads list. */
+    struct list donors;                 /*!< List of all threads which
+                                           have donated priority to
+                                           this thread. */
+    struct thread* donee;               /*!< Pointer to the thread
+					  receiving a donation. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    struct list_elem donor_elem;        /*!< Donor element. */
     /**@}*/
 
 #ifdef USERPROG
@@ -150,6 +160,9 @@ void thread_foreach(thread_action_func *, void *);
 void add_to_ready_queue(struct thread *t);
 int thread_get_priority(void);
 void thread_set_priority(int);
+
+void thread_donate_priority(struct thread* t);
+void thread_update_priority(struct thread* t);
 
 int thread_get_nice(void);
 void thread_set_nice(int);

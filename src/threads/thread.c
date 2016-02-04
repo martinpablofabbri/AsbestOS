@@ -74,6 +74,7 @@ static bool is_thread(struct thread *) UNUSED;
 static void *alloc_frame(struct thread *, size_t size);
 static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
+void thread_update_priority(struct thread* t);
 static tid_t allocate_tid(void);
 
 /*! Initializes the threading system by transforming the code
@@ -318,14 +319,50 @@ void thread_foreach(thread_action_func *func, void *aux) {
 void thread_set_priority(int new_priority) {
     struct thread* me = thread_current();
     int old_priority = me->priority;
-    me->priority = new_priority;
+    me->base_priority = new_priority;
 
-    if (new_priority < old_priority) {
-	//list_remove(&me->elem);
-	//add_to_ready_queue(me);
+    thread_update_priority(me);
+    if (me->priority < old_priority) {
 	thread_yield();
     }
 }
+
+/*! Updates the priority of t based on its donors. */
+void thread_update_priority(struct thread* t) {
+    struct list_elem *e;
+    enum intr_level old_level;
+
+    old_level = intr_disable();
+
+    int max = t->base_priority;
+
+    for (e = list_begin(&t->donors); e != list_end(&t->donors);
+         e = list_next(e)) {
+        struct thread *d = list_entry(e, struct thread, donor_elem);
+	if (d->priority > max)
+	    max = d->priority;
+    }
+
+    t->priority = max;
+
+    if (t->donee)
+	thread_update_priority(t->donee);
+
+    intr_set_level(old_level);
+}
+
+/*! Donates priority from the current thread to t. */
+void thread_donate_priority(struct thread* t) {
+    ASSERT(intr_get_level() == INTR_OFF);
+    if (t->priority > thread_get_priority())
+	return;
+
+    struct thread* me = thread_current();
+    me->donee = t;
+    list_push_back(&t->donors, &me->donor_elem);
+    thread_update_priority(t);
+}
+
 
 /*! Returns the current thread's priority. */
 int thread_get_priority(void) {
@@ -425,8 +462,12 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->status = THREAD_BLOCKED;
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
+    t->base_priority = priority;
     t->priority = priority;
     t->magic = THREAD_MAGIC;
+
+    t->donee = NULL;
+    list_init(&t->donors);
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
