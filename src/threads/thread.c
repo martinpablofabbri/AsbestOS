@@ -207,6 +207,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
         return TID_ERROR;
 
     /* Initialize thread. */
+    t->recent_cpu = thread_current()->recent_cpu;
     init_thread(t, name, priority);
     tid = t->tid = allocate_tid();
 
@@ -460,7 +461,7 @@ int thread_get_recent_cpu(void) {
     fixed scaled = fixedMultiplyInt(t->recent_cpu, 100);
     return fixed2intRoundClosest(scaled);
 }
-
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -533,7 +534,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     if (thread_mlfqs) {
 	thread_update_advanced_priority(t, NULL);
-        t->recent_cpu = thread_current()->recent_cpu;
     } else {
 	t->base_priority = priority;
 	t->priority = priority;
