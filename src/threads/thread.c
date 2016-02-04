@@ -24,9 +24,6 @@
 /*! List of processes that are sleeping. */
 static struct list sleep_list;
 
-/*! List of processes in THREAD_READY state, that is, processes
-    that are ready to run but not actually running. */
-static struct list ready_list;
 /*! Processes in the THREAD_READY state,
     Array (indexed by priority) of lists of threads */
 static struct list ready_priority_lists[NUM_PRIORITIES];
@@ -101,7 +98,6 @@ void thread_init(void) {
 
     lock_init(&tid_lock);
     list_init(&sleep_list);
-    list_init(&ready_list);
 
     // Initialize all ready lists 
     int i;
@@ -339,7 +335,6 @@ void thread_yield(void) {
     old_level = intr_disable();
     if (cur != idle_thread) {
 	add_to_ready_queue(cur);
-        list_push_back(&ready_list, &cur->elem);
     }
     cur->status = THREAD_READY;
     schedule();
