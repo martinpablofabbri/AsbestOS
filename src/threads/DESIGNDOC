@@ -88,7 +88,8 @@ We disbale interrupts within the timer_sleep call.
 This design takes advantage of the fact that we don't bother to look for
 a thread to wake before it's ready to be woken. Another design considered
 involved modifying the scheduler to not choose a thread that is sleeping,
-but keet it in the ready queue. That design has serious problems when all the threads in the ready queue are sleeping.
+but keet it in the ready queue. That design has serious problems when all
+the threads in the ready queue are sleeping.
 
                          PRIORITY SCHEDULING
                          ===================
@@ -120,8 +121,6 @@ static struct list ready_priority_lists[NUM_PRIORITIES];
 
 void add_to_ready_queue(struct thread *t);
         // A helper function to add a thread to the correct ready list
-
-
 
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
@@ -182,7 +181,6 @@ priority to. Note that a given thread can only be waiting on one lock
 at a time, so it can only have one donee and be a member of one donor
 list.
 
-
 ---- ALGORITHMS ----
 
 >> B3: How do you ensure that the highest priority thread waiting for
@@ -215,7 +213,6 @@ When a thread is updating its priority, it sets effective priority to the
 maximum of its base priority and the effective priorities of all its donors.
 It then tells its donee to update its priority as well. This is where we
 handle nested donation.
-
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
@@ -250,7 +247,7 @@ against the donated priorities, it disables interrupts for that step.
 
 TODO: Keegan
 
-                          ADVANCED SCHEDULER - TODO
+                          ADVANCED SCHEDULER
                           ==================
 
 ---- DATA STRUCTURES ----
@@ -268,7 +265,6 @@ struct thread {
 // threads/fixed_point.[ch]
 functions to simplify the fixed-point arithmetic
 
-
 ---- ALGORITHMS ----
 
 >> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
@@ -280,22 +276,28 @@ timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
  0      0   0   0  63  61  59     A                                                        
- 4      4   0   0  62  61  59                                                               
- 8                                                                                         
-12                                                                                         
-16                                                                                         
-20                                                                                         
-24                                                                                         
-28                                                                                         
-32                                                                                         
-36                                                                                         
+ 4      4   0   0  62  61  59     A                                                         
+ 8      8   0   0  61  61  59     B                                                        
+12      8   4   0  61  60  59     A                                                               
+16     12   4   0  60  60  59     B                                                        
+20     12   8   0  60  59  59     A                                                        
+24     16   8   0  59  59  59     C                                                      
+28     16   8   4  59  59  58     B                                                        
+32     16  12   4  59  58  58     A                                                        
+36     20  12   4  58  58  58     C                                                       
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
+When there are multiple threads with the same priproty, they are 
+scheduled in round-robin order. Thus, when threads A and B both have the 
+same priority, the running thread changes from A to B.
+
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
+
+TODO
 
 ---- RATIONALE ----
 
@@ -304,12 +306,17 @@ ticks   A   B   C   A   B   C   to run
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
+TODO
+
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
 >> decide to implement it the way you did?  If you created an
 >> abstraction layer for fixed-point math, that is, an abstract data
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
+
+Creating an abstraction for the fixed-point math in their own files made
+calculating the necessary values for the scheduler easier to code. 
 
                            SURVEY QUESTIONS
                            ================
