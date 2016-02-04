@@ -12,7 +12,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
+
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
 #endif
@@ -22,6 +22,9 @@
 
 /*! Number of timer ticks since OS booted. */
 static int64_t ticks;
+
+/*! Alarm for sleeping threads */
+static int64_t alarm;
 
 /*! Number of loops per timer tick.  Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -64,6 +67,16 @@ void timer_calibrate(void) {
     printf("%'"PRIu64" loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
 }
 
+/*! Get the alarm */
+int64_t get_alarm(void) {
+    return alarm;
+}
+
+/*! Set the alarm */
+void set_alarm(int64_t a) {
+    alarm = a;
+}
+
 /*! Returns the number of timer ticks since the OS booted. */
 int64_t timer_ticks(void) {
     enum intr_level old_level = intr_disable();
@@ -81,11 +94,16 @@ int64_t timer_elapsed(int64_t then) {
 /*! Sleeps for approximately TICKS timer ticks.  Interrupts must
     be turned on. */
 void timer_sleep(int64_t ticks) {
-    int64_t start = timer_ticks();
-
     ASSERT(intr_get_level() == INTR_ON);
-    while (timer_elapsed(start) < ticks) 
-        thread_yield();
+    if (ticks != 0) {
+        enum intr_level old_level = intr_disable();
+        int64_t wakeup_time = timer_ticks() + ticks;
+        thread_current()->clock = wakeup_time;
+        if (wakeup_time < alarm || alarm < timer_ticks())
+            alarm = wakeup_time;
+        thread_block();
+        intr_set_level(old_level);
+    }
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */
@@ -173,9 +191,9 @@ static void NO_INLINE busy_wait(int64_t loops) {
 /*! Sleep for approximately NUM/DENOM seconds. */
 static void real_time_sleep(int64_t num, int32_t denom) {
     /* Convert NUM/DENOM seconds into timer ticks, rounding down.
-          
-          (NUM / DENOM) s          
-       ---------------------- = NUM * TIMER_FREQ / DENOM ticks. 
+
+          (NUM / DENOM) s
+       ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
        1 s / TIMER_FREQ ticks
     */
     int64_t ticks = num * TIMER_FREQ / denom;
@@ -183,12 +201,12 @@ static void real_time_sleep(int64_t num, int32_t denom) {
     ASSERT(intr_get_level() == INTR_ON);
     if (ticks > 0) {
         /* We're waiting for at least one full timer tick.  Use timer_sleep()
-           because it will yield the CPU to other processes. */                
-        timer_sleep(ticks); 
+           because it will yield the CPU to other processes. */
+        timer_sleep(ticks);
     }
     else {
         /* Otherwise, use a busy-wait loop for more accurate sub-tick timing. */
-        real_time_delay(num, denom); 
+        real_time_delay(num, denom);
     }
 }
 
@@ -197,6 +215,6 @@ static void real_time_delay(int64_t num, int32_t denom) {
     /* Scale the numerator and denominator down by 1000 to avoid
        the possibility of overflow. */
     ASSERT(denom % 1000 == 0);
-    busy_wait(loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
+    busy_wait(loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 }
 

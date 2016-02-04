@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -20,6 +21,12 @@
     of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/*! List of processes that are sleeping. */
+static struct list sleep_list;
+
+/*! List of processes in THREAD_READY state, that is, processes
+    that are ready to run but not actually running. */
+static struct list ready_list;
 /*! Processes in the THREAD_READY state,
     Array (indexed by priority) of lists of threads */
 static struct list ready_priority_lists[NUM_PRIORITIES];
@@ -76,6 +83,7 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 void thread_update_priority(struct thread* t);
 static tid_t allocate_tid(void);
+static void wake_thread(void);
 
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
@@ -92,6 +100,8 @@ void thread_init(void) {
     ASSERT(intr_get_level() == INTR_OFF);
 
     lock_init(&tid_lock);
+    list_init(&sleep_list);
+    list_init(&ready_list);
 
     // Initialize all ready lists 
     int i;
@@ -106,6 +116,7 @@ void thread_init(void) {
     init_thread(initial_thread, "main", PRI_DEFAULT);
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
+    set_alarm(0);
 }
 
 /*! Starts preemptive thread scheduling by enabling interrupts.
@@ -141,6 +152,37 @@ void thread_tick(void) {
     /* Enforce preemption. */
     if (++thread_ticks >= TIME_SLICE)
         intr_yield_on_return();
+
+    int64_t cur_alarm = get_alarm();
+    if (cur_alarm != 0 && cur_alarm < timer_ticks())
+        wake_thread();
+}
+
+static void wake_thread(void) {
+    // Loop through blocked threads and find threads to wake up.
+    // If no more sleeping threads in blocked list, then set alarm = 0;
+
+    struct thread * next_thread;
+    int64_t new_alarm = 0;
+    size_t i;
+    for (i = 0; i < list_size(&all_list); i++) {
+        next_thread = list_entry(list_pop_front(&all_list), struct thread, allelem);
+        // If thread is blocked for some reason other than sleeping
+        if (next_thread->clock == 0) {
+        }
+        // If thread needs to be woken up
+        else if (next_thread->clock < timer_ticks()) {
+            next_thread->clock = 0;
+            thread_unblock(next_thread);
+        }
+        // If thread is still sleeping
+        else if (new_alarm == 0 || new_alarm > next_thread->clock) {
+            new_alarm = next_thread->clock;
+	}
+	list_push_back(&all_list, &next_thread->allelem);
+    }
+    
+    set_alarm(new_alarm);
 }
 
 /*! Prints thread statistics. */
@@ -215,7 +257,9 @@ void thread_block(void) {
     ASSERT(!intr_context());
     ASSERT(intr_get_level() == INTR_OFF);
 
-    thread_current()->status = THREAD_BLOCKED;
+    struct thread * cur = thread_current();
+    cur->status = THREAD_BLOCKED;
+    // list_push_back(&blocked_list, &cur->elem);
     schedule();
 }
 
@@ -295,6 +339,7 @@ void thread_yield(void) {
     old_level = intr_disable();
     if (cur != idle_thread) {
 	add_to_ready_queue(cur);
+        list_push_back(&ready_list, &cur->elem);
     }
     cur->status = THREAD_READY;
     schedule();
@@ -464,6 +509,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     t->base_priority = priority;
     t->priority = priority;
+    t->clock = 0;
     t->magic = THREAD_MAGIC;
 
     t->donee = NULL;
@@ -524,7 +570,7 @@ static struct thread * next_thread_to_run(void) {
    After this function and its caller returns, the thread switch is complete. */
 void thread_schedule_tail(struct thread *prev) {
     struct thread *cur = running_thread();
-  
+
     ASSERT(intr_get_level() == INTR_OFF);
 
     /* Mark us as running. */
