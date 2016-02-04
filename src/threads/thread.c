@@ -354,8 +354,6 @@ void thread_update_priority(struct thread* t) {
 /*! Donates priority from the current thread to t. */
 void thread_donate_priority(struct thread* t) {
     ASSERT(intr_get_level() == INTR_OFF);
-    //TODO(keegan): uncomment the following line
-    //ASSERT(t->priority <= thread_get_priority());
     if (t->priority > thread_get_priority())
 	return;
 
