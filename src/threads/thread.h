@@ -10,6 +10,8 @@
 #include <list.h>
 #include <stdint.h>
 
+#include "fixed_point.h"
+
 /*! States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING,     /*!< Running thread. */
@@ -100,6 +102,10 @@ struct thread {
                                            runs at. */
     int base_priority;                  /*!< Priority which the
 					  process assigns to itself. */
+    int niceness;                       /*!< Niceness, as used by the
+					  advanced scheduler. */
+    fixed recent_cpu;                   /*!< Recent CPU usage of
+					  thread */
     struct list_elem allelem;           /*!< List element for all
 					  threads list. */
     struct list donors;                 /*!< List of all threads which
