@@ -136,7 +136,8 @@ void thread_tick(void) {
     if (++thread_ticks >= TIME_SLICE)
         intr_yield_on_return();
 
-    if (get_alarm() != 0 && get_alarm() < timer_ticks())
+    int64_t cur_alarm = get_alarm();
+    if (cur_alarm != 0 && cur_alarm < timer_ticks())
         wake_thread();
 }
 
