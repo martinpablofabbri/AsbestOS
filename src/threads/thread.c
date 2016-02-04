@@ -116,7 +116,7 @@ void thread_init(void) {
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
 
-    ready_threads = 1;
+    ready_threads = 0;
     thread_load_avg = int2fixed(0);
 }
 
@@ -403,6 +403,9 @@ void thread_update_advanced_priority(struct thread* t, void* aux UNUSED) {
     int priority;
     enum intr_level old_level;
 
+    if (t == idle_thread)
+	return;
+
     old_level = intr_disable();
 
     priority = PRI_MAX -
@@ -412,11 +415,13 @@ void thread_update_advanced_priority(struct thread* t, void* aux UNUSED) {
     priority = (priority < PRI_MIN) ? PRI_MIN : priority;
     
     // Remove from the ready queue it's in
+    // TODO(keegan): Do we have to yield if we decrease the
+    // priority of the running thread?
+    t->priority = priority;
     if (t->status == THREAD_READY) {
 	list_remove(&t->elem);
+	add_to_ready_queue(t);
     }
-    t->priority = priority;
-    add_to_ready_queue(t);
 
     intr_set_level(old_level);
 }
