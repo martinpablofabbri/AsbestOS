@@ -118,6 +118,7 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    struct list_elem sleep_elem;              /*!< List element. */
     struct list_elem donor_elem;        /*!< Donor element. */
     /**@}*/
 
@@ -127,6 +128,9 @@ struct thread {
     uint32_t *pagedir;                  /*!< Page directory. */
     /**@{*/
 #endif
+
+    // Added for alarm clock
+    int64_t clock;
 
     /*! Owned by thread.c. */
     /**@{*/
