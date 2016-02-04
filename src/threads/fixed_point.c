@@ -4,8 +4,7 @@
 #define FIXED_MULTIPLIER 16384 // 2 ** 14
 
 fixed int2fixed(int32_t n) {
-    fixed ret = n * FIXED_MULTIPLIER;
-    return ret;
+    return n * FIXED_MULTIPLIER;
 }
 
 int32_t fixed2intRoundTowardZero(fixed x) {
