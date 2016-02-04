@@ -40,7 +40,6 @@ static void real_time_delay(int64_t num, int32_t denom);
 void timer_init(void) {
     pit_configure_channel(0, 2, TIMER_FREQ);
     intr_register_ext(0x20, timer_interrupt, "8254 Timer");
-    alarm = 0;
 }
 
 /*! Calibrates loops_per_tick, used to implement brief delays. */
@@ -96,11 +95,13 @@ int64_t timer_elapsed(int64_t then) {
     be turned on. */
 void timer_sleep(int64_t ticks) {
     ASSERT(intr_get_level() == INTR_ON);
-    int64_t wakeup_time = timer_ticks() + ticks;
-    thread_current()->clock = wakeup_time
-    if (wakeup_time < alarm || alarm < timer_ticks())
-        alarm = wakeup_time;
-    thread_block();
+    if (ticks != 0) {
+        int64_t wakeup_time = timer_ticks() + ticks;
+        thread_current()->clock = wakeup_time;
+        if (wakeup_time < alarm || alarm < timer_ticks())
+            alarm = wakeup_time;
+        thread_block();
+    }
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */
