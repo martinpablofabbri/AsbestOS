@@ -104,7 +104,7 @@ struct thread {
 					  process assigns to itself. */
     int niceness;                       /*!< Niceness, as used by the
 					  advanced scheduler. */
-    float_fp recent_cpu;                   /*!< Recent CPU usage of
+    fixed recent_cpu;                   /*!< Recent CPU usage of
 					  thread */
     struct list_elem allelem;           /*!< List element for all
 					  threads list. */
@@ -138,7 +138,7 @@ struct thread {
     If true, use multi-level feedback queue scheduler.
     Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
-float_fp thread_load_avg;
+fixed thread_load_avg;
 
 void thread_init(void);
 void thread_start(void);
