@@ -157,13 +157,13 @@ void thread_tick(void) {
     else
         kernel_ticks++;
 
+    if (t != idle_thread) {
+	t->recent_cpu = fixedAddInt(t->recent_cpu, 1);
+    }
     /* Enforce preemption and update priorities. */
     if (++thread_ticks >= TIME_SLICE) {
 	if (thread_mlfqs) {
 	    thread_foreach(thread_update_advanced_priority, NULL);
-    	    if (t != idle_thread) {
-	        ++(t->recent_cpu);
-    	    }
 	}
         intr_yield_on_return();
     }
