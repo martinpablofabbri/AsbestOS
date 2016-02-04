@@ -82,6 +82,7 @@ void thread_schedule_tail(struct thread *prev);
 void thread_update_priority(struct thread* t);
 void thread_update_donated_priority(struct thread* t);
 void thread_update_advanced_priority(struct thread* t, void *aux UNUSED);
+void thread_update_recent_cpu(struct thread * t, void *aux UNUSED);
 static tid_t allocate_tid(void);
 
 /*! Initializes the threading system by transforming the code
@@ -156,9 +157,6 @@ void thread_tick(void) {
     	    if (t != idle_thread) {
 	        ++(t->recent_cpu);
     	    }
-    	    if (timer_ticks() % TIMER_FREQ == 0) {
-	        thread_foreach(thread_update_recent_cpu, void);
-            }
 	}
         intr_yield_on_return();
     }
@@ -168,6 +166,8 @@ void thread_tick(void) {
 	thread_load_avg = fixedAdd(fixedMultiplyInt(thread_load_avg, 59),
 				   int2fixed(ready_threads));
 	thread_load_avg = fixedDivideInt(thread_load_avg, 60);
+
+	thread_foreach(thread_update_recent_cpu, NULL);
     }
 }
 
@@ -443,14 +443,14 @@ int thread_get_load_avg(void) {
     return fixed2intRoundClosest(fixedMultiplyInt(thread_load_avg, 100));
 }
 
-thread_update_recent_cpu(struct thread * t, void *aux) {
+void thread_update_recent_cpu(struct thread * t, void *aux UNUSED) {
     fixed recent_cpu = t->recent_cpu;
     fixed load_avg = thread_load_avg;
     fixed num = fixedMultiplyInt(load_avg, 2);
     fixed den = fixedAddInt(num, 1);
     fixed scale = fixedDivide(num, den);
     fixed updated = fixedAddInt(fixedMultiply(scale, recent_cpu),
-				thread->niceness);
+				t->niceness);
     t->recent_cpu = updated;
 }
 
