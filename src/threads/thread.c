@@ -75,6 +75,8 @@ static void *alloc_frame(struct thread *, size_t size);
 static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 void thread_update_priority(struct thread* t);
+void thread_update_donated_priority(struct thread* t);
+void thread_update_advanced_priority(struct thread* t, void *aux UNUSED);
 static tid_t allocate_tid(void);
 
 /*! Initializes the threading system by transforming the code
@@ -129,13 +131,6 @@ void thread_start(void) {
 void thread_tick(void) {
     struct thread *t = thread_current();
 
-    if (t != idle_thread) {
-	++(t->recent_cpu);
-    }
-    if (timer_ticks() % TIMER_FREQ == 0) {
-	thread_foreach(thread_update_recent_cpu, void);
-    }
-
     /* Update statistics. */
     if (t == idle_thread)
         idle_ticks++;
@@ -147,8 +142,18 @@ void thread_tick(void) {
         kernel_ticks++;
 
     /* Enforce preemption. */
-    if (++thread_ticks >= TIME_SLICE)
+    if (++thread_ticks >= TIME_SLICE) {
+	if (thread_mlfqs) {
+	    thread_foreach(thread_update_advanced_priority, NULL);
+    	    if (t != idle_thread) {
+	        ++(t->recent_cpu);
+    	    }
+    	    if (timer_ticks() % TIMER_FREQ == 0) {
+	        thread_foreach(thread_update_recent_cpu, void);
+            }
+	}
         intr_yield_on_return();
+    }
 }
 
 /*! Prints thread statistics. */
@@ -335,8 +340,17 @@ void thread_set_priority(int new_priority) {
     }
 }
 
-/*! Updates the priority of t based on its donors. */
+/*! Updates the priority of t based on the priority scheduler. */
 void thread_update_priority(struct thread* t) {
+    if (thread_mlfqs) {
+	thread_update_advanced_priority(t, NULL);
+    } else {
+	thread_update_donated_priority(t);
+    }
+}
+
+/*! Updates the priority of t based on its donors. */
+void thread_update_donated_priority(struct thread* t) {
     struct list_elem *e;
     enum intr_level old_level;
 
@@ -357,6 +371,15 @@ void thread_update_priority(struct thread* t) {
 	thread_update_priority(t->donee);
 
     intr_set_level(old_level);
+}
+
+/*! Updates the priority of t based on the advanced scheduler. */
+void thread_update_advanced_priority(struct thread* t, void* aux UNUSED) {
+    t->priority = PRI_MAX -
+	fixed2intRoundTowardZero(fixedDivideInt(t->recent_cpu,4)) -
+	(t->niceness * 2);
+    t->priority = (t->priority > PRI_MAX) ? PRI_MAX : t->priority;
+    t->priority = (t->priority < PRI_MIN) ? PRI_MIN : t->priority;
 }
 
 /*! Donates priority from the current thread to t. */
@@ -482,9 +505,13 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->status = THREAD_BLOCKED;
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
-    t->base_priority = priority;
-    t->priority = priority;
-    t->recent_cpu = thread_current()->recent_cpu;
+    if (thread_mlfqs) {
+	thread_update_advanced_priority(t, NULL);
+        t->recent_cpu = thread_current()->recent_cpu;
+    } else {
+	t->base_priority = priority;
+	t->priority = priority;
+    }
     t->magic = THREAD_MAGIC;
 
     t->donee = NULL;
