@@ -58,7 +58,11 @@ static long long user_ticks;    /*!< # of timer ticks in user programs. */
 
 /* Scheduling. */
 #define TIME_SLICE 4            /*!< # of timer ticks to give each thread. */
-static unsigned thread_ticks;   /*!< # of timer ticks since last yield. */
+static unsigned thread_ticks;   /*!< # of timer ticks since last
+				  yield. */
+static fixed thread_load_avg;
+static int ready_threads;     /*!< # of threads either READY or
+				  RUNNING. */
 
 /*! If false (default), use round-robin scheduler.
     If true, use multi-level feedback queue scheduler.
@@ -110,6 +114,7 @@ void thread_init(void) {
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
 
+    ready_threads = 1;
     thread_load_avg = int2fixed(0);
 }
 
@@ -152,8 +157,6 @@ void thread_tick(void) {
 
     if (timer_ticks() % TIMER_FREQ == 0) {
 	/* Update average load. */
-	int ready_threads = 3;
-	//TODO(keegan): correctly update ready_threads
 	thread_load_avg = fixedAdd(fixedMultiplyInt(thread_load_avg, 59),
 				   int2fixed(ready_threads));
 	thread_load_avg = fixedDivideInt(thread_load_avg, 60);
@@ -232,7 +235,12 @@ void thread_block(void) {
     ASSERT(!intr_context());
     ASSERT(intr_get_level() == INTR_OFF);
 
-    thread_current()->status = THREAD_BLOCKED;
+    struct thread* me = thread_current();
+    me->status = THREAD_BLOCKED;
+    if (me != idle_thread) {
+	ready_threads--;
+	ASSERT(ready_threads >= 0);
+    }
     schedule();
 }
 
@@ -252,6 +260,8 @@ void thread_unblock(struct thread *t) {
     ASSERT(t->status == THREAD_BLOCKED);
     add_to_ready_queue(t);
     t->status = THREAD_READY;
+    if (t != idle_thread)
+	ready_threads++;
     intr_set_level(old_level);
 }
 
@@ -296,6 +306,8 @@ void thread_exit(void) {
        when it calls thread_schedule_tail(). */
     intr_disable();
     list_remove(&thread_current()->allelem);
+    ready_threads--;
+    ASSERT(ready_threads >= 0);
     thread_current()->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
@@ -389,6 +401,9 @@ void thread_update_advanced_priority(struct thread* t, void* aux UNUSED) {
 /*! Donates priority from the current thread to t. */
 void thread_donate_priority(struct thread* t) {
     ASSERT(intr_get_level() == INTR_OFF);
+    if (thread_mlfqs)
+	return;
+
     if (t->priority > thread_get_priority())
 	return;
 
