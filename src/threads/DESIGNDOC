@@ -15,7 +15,7 @@ Jalen     Green     jpgreen@caltech.edu
 Martin    Fabbri    mfabbri@caltech.edu
 
 >> Specify how many late tokens you are using on this assignment:
-    TODO: 0/1
+    1
 
 >> What is the Git repository and commit hash for your submission?
 
@@ -245,7 +245,10 @@ against the donated priorities, it disables interrupts for that step.
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
-TODO: Keegan
+The other design we used had bugs that we could not figure out,
+so we scrapped it and started over.
+We liked this design because it was simple, easy to explain,
+and only took a few lines of code to implement.
 
                           ADVANCED SCHEDULER
                           ==================
@@ -297,7 +300,9 @@ same priority, the running thread changes from A to B.
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
-TODO
+Performance is probably not optimal because we turned off interrupts
+often. It is possibe that we are missing some timer interrupts
+because of this.
 
 ---- RATIONALE ----
 
@@ -306,7 +311,7 @@ TODO
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
-TODO
+Priority scheduler: simple, but took a while to design.
 
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
