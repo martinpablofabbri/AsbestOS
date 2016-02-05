@@ -157,13 +157,13 @@ void thread_tick(void) {
     else
         kernel_ticks++;
 
+    if (t != idle_thread) {
+	t->recent_cpu = fixedAddInt(t->recent_cpu, 1);
+    }
     /* Enforce preemption and update priorities. */
     if (++thread_ticks >= TIME_SLICE) {
 	if (thread_mlfqs) {
 	    thread_foreach(thread_update_advanced_priority, NULL);
-    	    if (t != idle_thread) {
-	        ++(t->recent_cpu);
-    	    }
 	}
         intr_yield_on_return();
     }
@@ -406,7 +406,7 @@ void thread_set_priority(int new_priority) {
 /*! Updates the priority of t based on the priority scheduler. */
 void thread_update_priority(struct thread* t) {
     if (thread_mlfqs) {
-	thread_update_advanced_priority(t, NULL);
+	//thread_update_advanced_priority(t, NULL);
     } else {
 	thread_update_donated_priority(t);
     }
@@ -446,15 +446,17 @@ void thread_update_advanced_priority(struct thread* t, void* aux UNUSED) {
 
     old_level = intr_disable();
 
-    priority = PRI_MAX -
-	fixed2intRoundTowardZero(fixedDivideInt(t->recent_cpu,4)) -
-	(t->niceness * 2);
+    fixed total = int2fixed(PRI_MAX);
+    fixed term1 = fixedDivideInt(t->recent_cpu, 4);
+    fixed term2 = int2fixed(t->niceness * 2);
+    total = fixedSubtract(total, term1);
+    total = fixedSubtract(total, term2);
+
+    priority = fixed2intRoundClosest(total);
     priority = (priority > PRI_MAX) ? PRI_MAX : priority;
     priority = (priority < PRI_MIN) ? PRI_MIN : priority;
     
     // Remove from the ready queue it's in
-    // TODO(keegan): Do we have to yield if we decrease the
-    // priority of the running thread?
     t->priority = priority;
     if (t->status == THREAD_READY) {
 	list_remove(&t->elem);
