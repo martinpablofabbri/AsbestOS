@@ -74,7 +74,6 @@ static void syscall_handler(struct intr_frame *f) {
     default:
 	printf("Syscall %u: Not implemented.\n", syscall_num);
     }
-    thread_exit();
 }
 
 void sys_halt () {
@@ -84,6 +83,7 @@ void sys_halt () {
 void sys_exit (int status) {
     // TODO: implement.
     printf("Exiting with code %d\n", status);
+    thread_exit();
 }
 
 int sys_write (int fd, const void *buffer, unsigned size) {
