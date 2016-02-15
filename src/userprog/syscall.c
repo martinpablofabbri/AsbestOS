@@ -57,17 +57,22 @@ void syscall_init(void) {
 
 static void syscall_handler(struct intr_frame *f) {
     printf("system call!\n");
-    void *esp = f->esp;
+    uint32_t* esp = f->esp;
     void *eax = &f->eax;
-    uint32_t syscall_num = *(uint32_t*)esp;
+    uint32_t syscall_num = esp[0];
 
     switch (syscall_num) {
     case SYS_HALT:
 	sys_halt();
 	break;
     case SYS_EXIT:
-	sys_exit(0);
+	sys_exit((int)esp[1]);
 	break;
+    case SYS_WRITE:
+	sys_write((int)esp[1], (void*)esp[2], (unsigned)esp[3]);
+	break;
+    default:
+	printf("Syscall %u: Not implemented.\n", syscall_num);
     }
     thread_exit();
 }
@@ -77,6 +82,11 @@ void sys_halt () {
 }
 
 void sys_exit (int status) {
-
+    // TODO: implement.
+    printf("Exiting with code %d\n", status);
 }
 
+int sys_write (int fd, const void *buffer, unsigned size) {
+    if (fd == 1)
+	printf("%s",buffer);
+}
