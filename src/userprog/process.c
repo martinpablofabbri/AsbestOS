@@ -457,8 +457,6 @@ static bool setup_stack(void **esp) {
     return success;
 }
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
 /*! Fill in a stack by pushing the arguments in argv onto the stack. */
 static bool setup_stack_arguments(void **esp, char **argv) {
     bool success = false;
@@ -485,15 +483,16 @@ static bool setup_stack_arguments(void **esp, char **argv) {
     }
 
     /* Push on argv and argc. */
-    *(argv_stack - 1) = argv_stack;
+    *(argv_stack - 1) = (void*)argv_stack;
     --argv_stack;
-    *(--argv_stack) = argc;
+    *(--argv_stack) = (void*)argc;
     *(--argv_stack) = NULL;
+
+    *esp = argv_stack;
 
     success = true;
     return success;
 }
-#pragma GCC pop_options
 
 /*! Adds a mapping from user virtual address UPAGE to kernel
     virtual address KPAGE to the page table.
