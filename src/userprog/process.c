@@ -473,22 +473,20 @@ static bool setup_stack_arguments(void **esp, char **argv) {
     /* Round down esp to be word aligned. */
     *esp = (void*)((uintptr_t)(*esp) & ~(sizeof(char*) - 1));
 
-    char **argv_stack = (char **)*esp;
+    char ***argv_stack = (char ***)esp;
     int i;
-    *(--argv_stack) = NULL;
+    *(--(*argv_stack)) = NULL;
     for (i = argc - 1; i >= 0; i--) {
 	int len = strlen(argv[i]) + 1;
-	*(--argv_stack) = esp_tmp;
+	*(--(*argv_stack)) = esp_tmp;
 	esp_tmp += len;
     }
 
     /* Push on argv and argc. */
-    *(argv_stack - 1) = (void*)argv_stack;
-    --argv_stack;
-    *(--argv_stack) = (void*)argc;
-    *(--argv_stack) = NULL;
-
-    *esp = argv_stack;
+    *((*argv_stack) - 1) = (void*)(*argv_stack);
+    --(*argv_stack);
+    *(--(*argv_stack)) = (void*)argc;
+    *(--(*argv_stack)) = NULL;
 
     success = true;
     return success;
