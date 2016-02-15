@@ -12,6 +12,10 @@ int get_user_1 (const void *addr, uint8_t* dest);
 int get_user_2 (const void *addr, uint16_t* dest);
 int get_user_4 (const void *addr, uint32_t* dest);
 
+static void sys_halt (void);
+static void sys_exit (int status);
+static int sys_write (int fd, const void *buffer, unsigned size);
+
 // TODO(keegan): Does it make sense to have this function here?
 int access_ok (const void *addr, unsigned long size) {
     // Function signature as in "Understanding the Linux Kernel," pg 412
@@ -56,9 +60,8 @@ void syscall_init(void) {
 }
 
 static void syscall_handler(struct intr_frame *f) {
-    printf("system call!\n");
     uint32_t* esp = f->esp;
-    void *eax = &f->eax;
+    void *eax UNUSED = &f->eax;
     uint32_t syscall_num = esp[0];
 
     switch (syscall_num) {
@@ -76,17 +79,18 @@ static void syscall_handler(struct intr_frame *f) {
     }
 }
 
-void sys_halt () {
+static void sys_halt (void) {
 
 }
 
-void sys_exit (int status) {
+static void sys_exit (int status) {
     // TODO: implement.
     printf("Exiting with code %d\n", status);
     thread_exit();
 }
 
-int sys_write (int fd, const void *buffer, unsigned size) {
+static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
     if (fd == 1)
-	printf("%s",buffer);
+	printf("%s",(char*)buffer);
+    return 0;
 }
