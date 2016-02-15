@@ -20,32 +20,73 @@
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
+static bool setup_stack_arguments(void **esp, char** argv);
 
-/*! Starts a new thread running a user program loaded from FILENAME.  The new
-    thread may be scheduled (and may even exit) before process_execute()
-    returns.  Returns the new process's thread id, or TID_ERROR if the thread
+/*! Takes a space delimited command string CMD_STR and fills buffer
+    BUF with a null-terminated argv-style array. Assumes that BUF is
+    large enough to hold the array and all the arguments. Returns true
+    on success. */
+static bool parse_command_string(const char *cmd_str, void* buf) {
+    /* Count the number of arguments. */
+    int argc = 0;
+    unsigned i;
+    for (i = 0; i < strlen(cmd_str); i++) {
+	if (cmd_str[i] != ' ') {
+	    if (i == 0 || cmd_str[i - 1] == ' ') {
+		argc++;
+	    }
+	}
+    }
+
+    /* Define the location to store the raw arguments. */
+    char *raw_args = (char *)buf + (argc + 1) * sizeof(char *);
+    char *saveptr, *token;
+    char **argv = (char**)buf;
+
+    /* Copy the command string to the location of the raw arguments. */
+    strlcpy(raw_args, cmd_str, strlen(cmd_str) + 1);
+
+    /* Tokenize and save indices of now null-terminated tokens. */
+    int count = 0;
+    for (token = strtok_r(raw_args, " ", &saveptr);
+	 token != NULL;
+	 token = strtok_r(NULL, " ", &saveptr)) {
+	argv[count++] = token;
+    }
+    argv[count] = NULL;
+
+    ASSERT(count == argc);
+
+    return true;
+}
+
+/*! Starts a new thread running a user program specified by the
+    executable and arguments in CMD_STR. The new thread may be
+    scheduled (and may even exit) before process_execute() returns.
+    Returns the new process's thread id, or TID_ERROR if the thread
     cannot be created. */
-tid_t process_execute(const char *file_name) {
-    char *fn_copy;
+tid_t process_execute(const char *cmd_str) {
+    char **argv_copy;
     tid_t tid;
 
-    /* Make a copy of FILE_NAME.
-       Otherwise there's a race between the caller and load(). */
-    fn_copy = palloc_get_page(0);
-    if (fn_copy == NULL)
+    /* Parse the command string into an argv-style array. */
+    argv_copy = palloc_get_page(0);
+    if (argv_copy == NULL)
         return TID_ERROR;
-    strlcpy(fn_copy, file_name, PGSIZE);
 
-    /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+    if (!parse_command_string(cmd_str, argv_copy))
+	return TID_ERROR;
+
+    /* Create a new thread to execute CMD_STR. */
+    tid = thread_create(argv_copy[0], PRI_DEFAULT, start_process, argv_copy);
     if (tid == TID_ERROR)
-        palloc_free_page(fn_copy); 
+        palloc_free_page(argv_copy); 
     return tid;
 }
 
 /*! A thread function that loads a user process and starts it running. */
-static void start_process(void *file_name_) {
-    char *file_name = file_name_;
+static void start_process(void *argv_) {
+    char **argv = argv_;
     struct intr_frame if_;
     bool success;
 
@@ -54,11 +95,14 @@ static void start_process(void *file_name_) {
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
-    success = load(file_name, &if_.eip, &if_.esp);
+    success = load(argv[0], &if_.eip, &if_.esp);
+
+    if (success)
+	success = setup_stack_arguments(&if_.esp, argv);
 
     /* If load failed, quit. */
-    palloc_free_page(file_name);
-    if (!success) 
+    palloc_free_page(argv);
+    if (!success)
         thread_exit();
 
     /* Start the user process by simulating a return from an
@@ -406,12 +450,50 @@ static bool setup_stack(void **esp) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
 	//TODO: replace with actual argument parsing
         if (success)
-            *esp = PHYS_BASE - 12;
+            *esp = PHYS_BASE;
         else
             palloc_free_page(kpage);
     }
     return success;
 }
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+/*! Fill in a stack by pushing the arguments in argv onto the stack. */
+static bool setup_stack_arguments(void **esp, char **argv) {
+    bool success = false;
+
+    int argc = 0;
+    while (argv[argc]) {
+	int len = strlen(argv[argc]) + 1;
+	*esp -= len;
+	strlcpy(*esp, argv[argc], len);
+	argc++;
+    }
+    void *esp_tmp = *esp;
+
+    /* Round down esp to be word aligned. */
+    *esp = (void*)((uintptr_t)(*esp) & ~(sizeof(char*) - 1));
+
+    char **argv_stack = (char **)*esp;
+    int i;
+    *(--argv_stack) = NULL;
+    for (i = argc - 1; i >= 0; i--) {
+	int len = strlen(argv[i]) + 1;
+	*(--argv_stack) = esp_tmp;
+	esp_tmp += len;
+    }
+
+    /* Push on argv and argc. */
+    *(argv_stack - 1) = argv_stack;
+    --argv_stack;
+    *(--argv_stack) = argc;
+    *(--argv_stack) = NULL;
+
+    success = true;
+    return success;
+}
+#pragma GCC pop_options
 
 /*! Adds a mapping from user virtual address UPAGE to kernel
     virtual address KPAGE to the page table.
