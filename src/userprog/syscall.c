@@ -104,7 +104,7 @@ static void syscall_handler(struct intr_frame *f) {
 }
 
 static void sys_halt (void) {
-
+    shutdown_power_off();
 }
 
 static void sys_exit (int status) {
