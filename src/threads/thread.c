@@ -405,6 +405,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->priority = priority;
     t->child_head = NULL;
     t->self_info = NULL;
+    t->retval = -1;
     t->magic = THREAD_MAGIC;
 
     old_level = intr_disable();

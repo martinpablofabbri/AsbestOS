@@ -258,8 +258,7 @@ void process_exit(void) {
 	// Parent is alive
 	lock_acquire(&info->child_lock);
 	info->child_is_dead = true;
-	// TODO(keegan): set return value to proper value.
-	info->retval = 42;
+	info->retval = cur->retval;
 
 	cond_signal(&info->has_exited, &info->child_lock);
 	lock_release(&info->child_lock);

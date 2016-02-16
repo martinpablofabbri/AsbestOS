@@ -104,6 +104,7 @@ struct thread {
     struct child_info* self_info;       /*!< Pointer to the child_info
                                            struct held by this
                                            thread's parent. */
+    int retval;
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */

@@ -1,7 +1,9 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "devices/shutdown.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -14,11 +16,11 @@ int get_user_4 (const void *addr, uint32_t* dest);
 
 static void sys_halt (void);
 static void sys_exit (int status);
+static tid_t sys_exec (const char *file);
+static int sys_wait (tid_t tid);
 static int sys_write (int fd, const void *buffer, unsigned size);
 
 // TODO(keegan): Does it make sense to have this function here?
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
 bool access_ok (const void *addr, unsigned long size) {
     // Function signature as approximately in "Understanding the Linux
     // Kernel," pg 412
@@ -36,7 +38,6 @@ bool access_ok (const void *addr, unsigned long size) {
 
     return true;
 }
-#pragma GCC pop_options
 
 int get_user_1 (const void *addr, uint8_t* dest) {
     if (!access_ok(addr, 1))
@@ -63,36 +64,62 @@ void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
+
+#define SYSCALL_0(f) ({				\
+	    f();				\
+	})
+
+#define SYSCALL_1(f,t1) ({			\
+	    uint32_t a1;			\
+	    if (get_user_4(esp + 1, &a1) == -1)	\
+		goto fail;			\
+	    f((t1)a1);				\
+	})
+
+#define SYSCALL_2(f,t1,t2) ({			\
+	    uint32_t a1, a2;			\
+	    if (get_user_4(esp + 1, &a1) == -1)	\
+		goto fail;			\
+	    if (get_user_4(esp + 2, &a2) == -1)	\
+		goto fail;			\
+	    f((t1)a1,(t2)a2);			\
+	})
+
+#define SYSCALL_3(f,t1,t2,t3) ({		\
+	    uint32_t a1, a2, a3;		\
+	    if (get_user_4(esp + 1, &a1) == -1)	\
+		goto fail;			\
+	    if (get_user_4(esp + 2, &a2) == -1)	\
+		goto fail;			\
+	    if (get_user_4(esp + 3, &a3) == -1)	\
+		goto fail;			\
+	    f((t1)a1,(t2)a2,(t3)a3);		\
+	})
+
+
 static void syscall_handler(struct intr_frame *f) {
     uint32_t* esp = f->esp;
     int *eax = (int *)&f->eax;
-
-    //if (!access_ok(esp, 4)) {
-    //goto fail;
-    //}
 
     uint32_t syscall_num;
     if (get_user_4(esp, &syscall_num) == -1)
 	goto fail;
 
-    /* Get arguments from stack. */
-    uint32_t a1, a2, a3;
-    int valid_args = 3;
-    valid_args += get_user_4(esp + 1, &a1);
-    valid_args += get_user_4(esp + 2, &a2);
-    valid_args += get_user_4(esp + 3, &a3);
-
     switch (syscall_num) {
     case SYS_HALT:
-	sys_halt();
+	SYSCALL_0(sys_halt);
 	break;
     case SYS_EXIT:
-	if (valid_args < 1)
-	    goto fail;
-	sys_exit((int)a1);
+	SYSCALL_1(sys_exit, int);
+	break;
+    case SYS_EXEC:
+	*eax = SYSCALL_1(sys_exec, const char*);
+	break;
+    case SYS_WAIT:
+	*eax = SYSCALL_1(sys_wait, tid_t);
 	break;
     case SYS_WRITE:
-	sys_write((int)a1, (void*)a2, (unsigned)a3);
+	*eax = SYSCALL_3(sys_write, int, void*, unsigned);
 	break;
     default:
 	printf("Syscall %u: Not implemented.\n", syscall_num);
@@ -109,7 +136,17 @@ static void sys_halt (void) {
 
 static void sys_exit (int status) {
     printf("%s: exit(%d)\n", thread_name(), status);
+    thread_current()->retval = status;
     thread_exit();
+}
+
+static tid_t sys_exec (const char *file) {
+    tid_t ret = process_execute(file);
+    return (ret == TID_ERROR) ? -1 : ret;
+}
+
+static int sys_wait (tid_t tid) {
+    return process_wait(tid);
 }
 
 static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
