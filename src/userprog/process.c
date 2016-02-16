@@ -239,7 +239,18 @@ int process_wait(tid_t child_tid) {
 	    cond_wait(&target->has_exited, &target->child_lock);
 	}
 	return_code = target->retval;
+	// Remove target from list of children
+	if (!target->prev && !target->next) {
+	    // This is an only child
+	    thread_current()->child_head = NULL;
+	} else {
+	    if (target->prev)
+		target->prev->next = target->next;
+	    if (target->next)
+		target->next->prev = target->prev;
+	}
 	lock_release(&target->child_lock);
+	free(target);
     }
 
     return return_code;
