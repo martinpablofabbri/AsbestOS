@@ -10,6 +10,8 @@
 #include <list.h>
 #include <stdint.h>
 
+#include "threads/synch.h"
+
 /*! States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING,     /*!< Running thread. */
@@ -97,6 +99,11 @@ struct thread {
     uint8_t *stack;                     /*!< Saved stack pointer. */
     int priority;                       /*!< Priority. */
     struct list_elem allelem;           /*!< List element for all threads list. */
+    struct child_info* child_head;      /*!< Head of the doubly linked
+					  list of children. */
+    struct child_info* self_info;       /*!< Pointer to the child_info
+                                           struct held by this
+                                           thread's parent. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
@@ -116,6 +123,21 @@ struct thread {
     unsigned magic;                     /* Detects stack overflow. */
     /**@}*/
 };
+
+/*! Information that a parent thread maintains about each of its
+  children. */
+struct child_info {
+    struct child_info* prev;
+    struct child_info* next;
+
+    tid_t child_tid;
+    int retval;
+
+    bool child_is_dead;
+    struct lock child_lock;
+    struct condition has_exited;
+};
+
 
 /*! If false (default), use round-robin scheduler.
     If true, use multi-level feedback queue scheduler.
@@ -153,6 +175,9 @@ int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+struct thread *thread_by_tid(tid_t tid);
+void init_child_info(struct child_info *child);
 
 #endif /* threads/thread.h */
 

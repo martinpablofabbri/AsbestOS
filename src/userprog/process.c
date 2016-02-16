@@ -14,9 +14,13 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+
+/*! Lock used when a process is dying. */
+static struct lock death_lock;
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
@@ -60,6 +64,11 @@ static bool parse_command_string(const char *cmd_str, void* buf) {
     return true;
 }
 
+/*! Initializes any datastructures needed for processes. */
+void process_init(void) {
+    lock_init(&death_lock);
+}
+
 /*! Starts a new thread running a user program specified by the
     executable and arguments in CMD_STR. The new thread may be
     scheduled (and may even exit) before process_execute() returns.
@@ -77,10 +86,31 @@ tid_t process_execute(const char *cmd_str) {
     if (!parse_command_string(cmd_str, argv_copy))
 	return TID_ERROR;
 
+    /* Initialize new child information structure for current thread. */
+    struct child_info* child;
+    child = (struct child_info*)malloc(sizeof (struct child_info));
+    init_child_info(child);
+    struct thread* me = thread_current();
+    if (me->child_head == NULL) {
+	me->child_head = child;
+    } else {
+	child->next = me->child_head;
+	me->child_head->prev = child;
+	me->child_head = child;
+    }
+
     /* Create a new thread to execute CMD_STR. */
+    lock_acquire(&death_lock);
     tid = thread_create(argv_copy[0], PRI_DEFAULT, start_process, argv_copy);
-    if (tid == TID_ERROR)
+    if (tid == TID_ERROR) {
+	// TODO(keegan): Clean up child_info here
         palloc_free_page(argv_copy); 
+    } else {
+	child->child_tid = tid;
+	struct thread* child_thread = thread_by_tid(child->child_tid);
+	child_thread->self_info = child;
+    }
+    lock_release(&death_lock);
     return tid;
 }
 
@@ -123,15 +153,128 @@ static void start_process(void *argv_) {
 
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
-int process_wait(tid_t child_tid UNUSED) {
-    for (;;);
-    return -1;
+int process_wait(tid_t child_tid) {
+    /**
+       All threads must maintain an array of children tid/return
+       value/state tuples which is within the current thread's
+       page. Also needs to keep track of parent's return state.
+
+       ===========================
+       struct child
+         thread* child
+	 tid_t child_tid
+	 cond has_exited
+	 lock child_lock
+	 int retval
+
+       Each thread has:
+         List<child> of children allocated and freed by current thread
+	 Parent status
+         Pointer to child object the thread is in.
+
+       Option:
+       global lock for all process inheritance.
+         Slow but it would work.
+         More overhead waiting for a certain child to exit
+       One lock for every child object
+         What if the child dies before the lock is acquired?
+	 Check state once lock is acquired 
+       One lock for every child and parent
+         What order to access them, and could there be deadlock?
+	 
+
+      ==================
+        Child dying:
+	  Check if parent is still alive.
+	  If so, acquire parent's child lock. (could be thread unsafe)
+	  Inform all children that death is inevitable. (could be
+        thread unsafe)
+	  Clean up all children
+	  set return code of parent's child appropriately.
+	  Nullify parent's pointer to self (to indicate the child is
+        dead)
+	  cond_signal child's death to parent on child lock.
+	  release child lock
+
+	Parent waiting:
+	  Look through list of children until the appropriate tid is
+	  found.
+	  Acquire that child's lock.
+	  Check to see if the child thread is alive (non-null)
+	  If dead, eventually return retval.
+	  If alive, wait on child death condvar
+	  release child lock.
+	  Destruct child object.
+	  return retval
+
+	Parent exec:
+	  Construct child object.
+	  Start thread
+	  
+    */
+
+    int return_code = -1;
+
+    lock_acquire(&death_lock);
+    /* Find out if the supplied tid is a child of this process. */
+    struct child_info* target = NULL;
+    struct child_info* cur_kid = thread_current()->child_head;
+    while (cur_kid) {
+	struct child_info* prev = cur_kid;
+	cur_kid = prev->next;
+	if (prev->child_tid == child_tid) {
+	    target = prev;
+	    break;
+	}
+    }
+
+    if (target)
+	lock_acquire(&target->child_lock);
+
+    // Release the death lock so other threads can die.
+    lock_release(&death_lock);
+
+    if (target) {
+	while (!target->child_is_dead) {
+	    cond_wait(&target->has_exited, &target->child_lock);
+	}
+	return_code = target->retval;
+	lock_release(&target->child_lock);
+    }
+
+    return return_code;
 }
 
 /*! Free the current process's resources. */
 void process_exit(void) {
     struct thread *cur = thread_current();
     uint32_t *pd;
+
+    lock_acquire(&death_lock);
+    /* Notify parent of death. */
+    /* First, check to see if the parent is alive. */
+    struct child_info* info = cur->self_info;
+    if (info != NULL) {
+	// Parent is alive
+	lock_acquire(&info->child_lock);
+	info->child_is_dead = true;
+	// TODO(keegan): set return value to proper value.
+	info->retval = 42;
+
+	cond_signal(&info->has_exited, &info->child_lock);
+	lock_release(&info->child_lock);
+    }
+
+    /* Notify all children of death. */
+    struct child_info* cur_kid = cur->child_head;
+    while (cur_kid) {
+	struct child_info* prev = cur_kid;
+	cur_kid = prev->next;
+	thread_by_tid(prev->child_tid)->self_info = NULL;
+	free(prev);
+    }
+
+    lock_release(&death_lock);
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */

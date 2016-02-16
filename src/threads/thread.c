@@ -9,7 +9,6 @@
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
-#include "threads/synch.h"
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -87,6 +86,8 @@ void thread_init(void) {
     lock_init(&tid_lock);
     list_init(&ready_list);
     list_init(&all_list);
+
+    process_init();
 
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
@@ -402,6 +403,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
+    t->child_head = NULL;
+    t->self_info = NULL;
     t->magic = THREAD_MAGIC;
 
     old_level = intr_disable();
@@ -508,3 +511,39 @@ static tid_t allocate_tid(void) {
     Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
 
+/*! Returns the thread with the given tid, or NULL if the thread no
+    longer exists. Not inherently thread safe-- the returned thread
+    may die after interrupts are reenabled. */
+struct thread *thread_by_tid(tid_t tid) {
+    struct list_elem *e;
+    enum intr_level old_level;
+    struct thread* ret = NULL;
+
+    old_level = intr_disable();
+
+    for (e = list_begin(&all_list); e != list_end(&all_list);
+         e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, allelem);
+	if (t->tid == tid) {
+	    ret = t;
+	    break;
+	}
+    }
+
+    intr_set_level(old_level);
+    return ret;
+}
+
+/*! Initialize members of the child_info structure. */
+void init_child_info(struct child_info *child) {
+    ASSERT(child != NULL);
+    child->prev = NULL;
+    child->next = NULL;
+    
+    child->child_tid = 0;
+    child->retval = -1;
+
+    child->child_is_dead = false;
+    lock_init(&child->child_lock);
+    cond_init(&child->has_exited);
+}
