@@ -69,21 +69,38 @@ void process_init(void) {
     lock_init(&death_lock);
 }
 
+struct process_start_args {
+    struct semaphore* start_sema;
+    bool* started_successfully;
+    char* argv_start;
+};
+
 /*! Starts a new thread running a user program specified by the
-    executable and arguments in CMD_STR. The new thread may be
+    executable and arguments in CMD_STR. The new thread will be
     scheduled (and may even exit) before process_execute() returns.
     Returns the new process's thread id, or TID_ERROR if the thread
-    cannot be created. */
+    cannot be created. Waits for the process to indicate startup
+    success or failure before returning. */
 tid_t process_execute(const char *cmd_str) {
+    struct process_start_args* args;
     char **argv_copy;
     tid_t tid;
 
     /* Parse the command string into an argv-style array. */
-    argv_copy = palloc_get_page(0);
-    if (argv_copy == NULL)
+    args = palloc_get_page(0);
+    if (args == NULL)
         return TID_ERROR;
 
-    if (!parse_command_string(cmd_str, argv_copy))
+
+    struct semaphore start_sema;
+    sema_init(&start_sema, 0);
+    args->start_sema = &start_sema;
+
+    bool started_successfully;
+    args->started_successfully = &started_successfully;
+
+    argv_copy = &args->argv_start;
+    if (!parse_command_string(cmd_str,argv_copy))
 	return TID_ERROR;
 
     /* Initialize new child information structure for current thread. */
@@ -101,22 +118,39 @@ tid_t process_execute(const char *cmd_str) {
 
     /* Create a new thread to execute CMD_STR. */
     lock_acquire(&death_lock);
-    tid = thread_create(argv_copy[0], PRI_DEFAULT, start_process, argv_copy);
+    tid = thread_create(argv_copy[0], PRI_DEFAULT, start_process, args);
+
     if (tid == TID_ERROR) {
-	// TODO(keegan): Clean up child_info here
-        palloc_free_page(argv_copy); 
+        palloc_free_page(args); 
+    }
+
+    sema_down(&start_sema);
+    if (!started_successfully) {
+	tid = TID_ERROR;
+	// Remove the head of the dead child
+	struct child_info* to_remove;
+	to_remove = me->child_head;
+	if (me->child_head->next) {
+	    me->child_head = me->child_head->next;
+	} else {
+	    me->child_head = NULL;
+	}
+	free(to_remove);
     } else {
 	child->child_tid = tid;
 	struct thread* child_thread = thread_by_tid(child->child_tid);
 	child_thread->self_info = child;
     }
     lock_release(&death_lock);
+
     return tid;
 }
 
 /*! A thread function that loads a user process and starts it running. */
-static void start_process(void *argv_) {
-    char **argv = argv_;
+static void start_process(void *start_args_) {
+    struct process_start_args* start_args;
+    start_args = (struct process_start_args*)start_args_;
+    char **argv = &start_args->argv_start;
     struct intr_frame if_;
     bool success;
 
@@ -130,8 +164,16 @@ static void start_process(void *argv_) {
     if (success)
 	success = setup_stack_arguments(&if_.esp, argv);
 
+    /* We know whether the startup was successful or not, so signal to
+       the starting process. */
+
+    struct semaphore* start_sema = start_args->start_sema;
+    *(start_args->started_successfully) = success;
+    sema_up(start_sema);
+
     /* If load failed, quit. */
-    palloc_free_page(argv);
+    palloc_free_page(start_args);
+
     if (!success)
         thread_exit();
 
