@@ -8,6 +8,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
 
 static void syscall_handler(struct intr_frame *);
 bool access_ok (const void *addr, unsigned long size);
@@ -186,7 +188,8 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
 static int fd_from_file (struct file * file) {
     // TODO(jg): turn file struct into a file descriptor (int)
     //           for now, just cast the file struct address into int
-    fd = (int) file_struct;
+    int fd = (int) file;
+    return fd;
 }
 
 static struct file * file_from_fd (int fd) {
@@ -197,6 +200,9 @@ static struct file * file_from_fd (int fd) {
 }
 
 static bool sys_create(const char *name, uint32_t initial_size) {
+    if (name == NULL)
+	sys_exit(-1);
+    
     lock_acquire(&filesys_lock);
 
     bool ret = filesys_create(name, initial_size); 
@@ -229,13 +235,12 @@ static int sys_open(const char *name) {
 
 static int sys_filesize(int fd) {
     struct file *file;
-    struct inode *files_inode;
     int length;
 
     lock_acquire(&filesys_lock);
 
     file = file_from_fd(fd);
-    length = file_lenght(file);
+    length = file_length(file);
 
     lock_release(&filesys_lock);
     return length;
