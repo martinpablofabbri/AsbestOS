@@ -20,7 +20,6 @@ static tid_t sys_exec (const char *file);
 static int sys_wait (tid_t tid);
 static int sys_write (int fd, const void *buffer, unsigned size);
 
-// TODO(keegan): Does it make sense to have this function here?
 bool access_ok (const void *addr, unsigned long size) {
     // Function signature as approximately in "Understanding the Linux
     // Kernel," pg 412
