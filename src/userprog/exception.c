@@ -76,6 +76,7 @@ static void kill(struct intr_frame *f) {
     case SEL_UCSEG:
         /* User's code segment, so it's a user exception, as we
            expected.  Kill the user process.  */
+	printf("%s: exit(%d)\n", thread_name(), thread_current()->retval);
         printf("%s: dying due to interrupt %#04x (%s).\n",
                thread_name(), f->vec_no, intr_name(f->vec_no));
         intr_dump_frame(f);
