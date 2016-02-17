@@ -200,7 +200,6 @@ static struct file * file_from_fd (int fd) {
 }
 
 static bool sys_create(const char *name, uint32_t initial_size) {
-    // TODO(jg) prevent bad pointer access
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
     
@@ -213,6 +212,9 @@ static bool sys_create(const char *name, uint32_t initial_size) {
 }
 
 static bool sys_remove(const char *name) {
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+	sys_exit(-1);
+
     lock_acquire(&filesys_lock);
 
     bool ret = filesys_remove(name); 
@@ -224,6 +226,9 @@ static bool sys_remove(const char *name) {
 static int sys_open(const char *name) {
     struct file *file;
     int fd;
+
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+	sys_exit(-1);
 
     lock_acquire(&filesys_lock);
 
