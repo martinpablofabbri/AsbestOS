@@ -200,7 +200,8 @@ static struct file * file_from_fd (int fd) {
 }
 
 static bool sys_create(const char *name, uint32_t initial_size) {
-    if (name == NULL)
+    // TODO(jg) prevent bad pointer access
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
     
     lock_acquire(&filesys_lock);
