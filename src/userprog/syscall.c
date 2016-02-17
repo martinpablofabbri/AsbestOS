@@ -135,12 +135,13 @@ static void sys_halt (void) {
 }
 
 static void sys_exit (int status) {
-    printf("%s: exit(%d)\n", thread_name(), status);
     thread_current()->retval = status;
     thread_exit();
 }
 
 static tid_t sys_exec (const char *file) {
+    if (!access_ok(file, 1))
+	return -1;
     tid_t ret = process_execute(file);
     return (ret == TID_ERROR) ? -1 : ret;
 }
