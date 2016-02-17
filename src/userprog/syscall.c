@@ -20,9 +20,9 @@ static void sys_exit (int status);
 static tid_t sys_exec (const char *file);
 static int sys_wait (tid_t tid);
 static int sys_write (int fd, const void *buffer, unsigned size);
-static bool sys_create(const char *file, uint32_t initial_size);
-static bool sys_remove(const char *file);
-static int sys_open(const char *file);
+static bool sys_create(const char *name, uint32_t initial_size);
+static bool sys_remove(const char *name);
+static int sys_open(const char *name);
 static int sys_filesize(int fd);
 static void sys_close(int fd);
 static struct lock filesys_lock;
@@ -196,31 +196,31 @@ static struct file * file_from_fd (int fd) {
     return file;
 }
 
-static bool sys_create(const char *file, uint32_t initial_size) {
+static bool sys_create(const char *name, uint32_t initial_size) {
     lock_acquire(&filesys_lock);
 
-    bool ret = filesys_create(file, initial_size); 
-
-    lock_release(&filesys_lock);
-    return 
-}
-
-static bool sys_remove(const char *file) {
-    lock_acquire(&filesys_lock);
-
-    bool ret = filesys_remove(file); 
+    bool ret = filesys_create(name, initial_size); 
 
     lock_release(&filesys_lock);
     return ret;
 }
 
-static int sys_open(const char *file) {
-    struct file *file_struct;
+static bool sys_remove(const char *name) {
+    lock_acquire(&filesys_lock);
+
+    bool ret = filesys_remove(name); 
+
+    lock_release(&filesys_lock);
+    return ret;
+}
+
+static int sys_open(const char *name) {
+    struct file *file;
     int fd;
 
     lock_acquire(&filesys_lock);
 
-    file_struct = filesys_open(file); 
+    file = filesys_open(name); 
     fd = fd_from_file(file);
 
     lock_release(&filesys_lock);
@@ -228,16 +228,25 @@ static int sys_open(const char *file) {
 }
 
 static int sys_filesize(int fd) {
+    struct file *file;
+    struct inode *files_inode;
+    int length;
+
     lock_acquire(&filesys_lock);
 
-    bool ret = filesys_open(file); 
+    file = file_from_fd(fd);
+    length = file_lenght(file);
 
     lock_release(&filesys_lock);
-    return ret;
+    return length;
 }
 
 static void sys_close(int fd) {
+    struct file *file;
     lock_acquire(&filesys_lock);
-    // TODO(jg)
+
+    file = file_from_fd(fd);
+    file_close(file);
+
     lock_release(&filesys_lock);
 }
