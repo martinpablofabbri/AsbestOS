@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 
 static void syscall_handler(struct intr_frame *);
 bool access_ok (const void *addr, unsigned long size);
@@ -19,6 +20,12 @@ static void sys_exit (int status);
 static tid_t sys_exec (const char *file);
 static int sys_wait (tid_t tid);
 static int sys_write (int fd, const void *buffer, unsigned size);
+static bool sys_create(const char *file, uint32_t initial_size);
+static bool sys_remove(const char *file);
+static int sys_open(const char *file);
+static int sys_filesize(int fd);
+static void sys_close(int fd);
+static struct lock filesys_lock;
 
 // TODO(keegan): Does it make sense to have this function here?
 bool access_ok (const void *addr, unsigned long size) {
@@ -62,6 +69,7 @@ int get_user_4 (const void *addr, uint32_t* dest) {
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
+    lock_init(&filesys_lock);
 }
 
 
@@ -121,6 +129,26 @@ static void syscall_handler(struct intr_frame *f) {
     case SYS_WRITE:
 	*eax = SYSCALL_3(sys_write, int, void*, unsigned);
 	break;
+    case SYS_CREATE:
+	// TODO(jg)
+	*eax = SYSCALL_2(sys_create, const char*, uint32_t);
+        break;
+    case SYS_REMOVE:
+	// TODO(jg)
+	*eax = SYSCALL_1(sys_remove, const char*);
+        break;
+    case SYS_OPEN:
+	// TODO(jg)
+	*eax = SYSCALL_1(sys_open, const char*);
+        break;
+    case SYS_CLOSE:
+	// TODO(jg)
+	SYSCALL_1(sys_close, int);
+        break;
+    case SYS_FILESIZE:
+	// TODO(jg)
+	*eax = SYSCALL_1(sys_filesize, int);
+
     default:
 	printf("Syscall %u: Not implemented.\n", syscall_num);
     }
@@ -153,4 +181,63 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
     if (fd == 1)
 	printf("%s",(char*)buffer);
     return 0;
+}
+
+static int fd_from_file (struct file * file) {
+    // TODO(jg): turn file struct into a file descriptor (int)
+    //           for now, just cast the file struct address into int
+    fd = (int) file_struct;
+}
+
+static struct file * file_from_fd (int fd) {
+    // TODO(jg) will change when change method of turning file structs to fds
+    struct file *file;
+    file = (struct file *) fd;
+    return file;
+}
+
+static bool sys_create(const char *file, uint32_t initial_size) {
+    lock_acquire(&filesys_lock);
+
+    bool ret = filesys_create(file, initial_size); 
+
+    lock_release(&filesys_lock);
+    return 
+}
+
+static bool sys_remove(const char *file) {
+    lock_acquire(&filesys_lock);
+
+    bool ret = filesys_remove(file); 
+
+    lock_release(&filesys_lock);
+    return ret;
+}
+
+static int sys_open(const char *file) {
+    struct file *file_struct;
+    int fd;
+
+    lock_acquire(&filesys_lock);
+
+    file_struct = filesys_open(file); 
+    fd = fd_from_file(file);
+
+    lock_release(&filesys_lock);
+    return fd;
+}
+
+static int sys_filesize(int fd) {
+    lock_acquire(&filesys_lock);
+
+    bool ret = filesys_open(file); 
+
+    lock_release(&filesys_lock);
+    return ret;
+}
+
+static void sys_close(int fd) {
+    lock_acquire(&filesys_lock);
+    // TODO(jg)
+    lock_release(&filesys_lock);
 }
