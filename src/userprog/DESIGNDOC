@@ -20,7 +20,7 @@ Martin    Fabbri    mfabbri@caltech.edu
 >> What is the Git repository and commit hash for your submission?
 
    Repository URL: https://github.com/keeganryan/AsbestOS
-   commit ...
+   commit 78369f3e88243e2750e35c483b93a1eef9568253
 
 ---- PRELIMINARIES ----
 
@@ -44,6 +44,17 @@ Martin    Fabbri    mfabbri@caltech.edu
   processes. */
 struct process_start_args {
     struct semaphore* start_sema;        /*!< Semaphore used by the
+                                           child to signal either
+                                           successful or failed
+                                           creation. */
+    bool* started_successfully;          /*!< Reference to a boolean
+                                           value the child process
+                                           sets in order to signal how
+                                           creation went. */
+    char* argv_start;                    /*!< Pointer to the start of
+                                           the argv array of
+                                           arguments. The array is
+                                           variable length. */
                                            child to signal either
                                            successful or failed
                                            creation. */
