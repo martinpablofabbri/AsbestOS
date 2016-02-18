@@ -120,8 +120,6 @@ static void syscall_handler(struct intr_frame *f) {
     if (get_user_4(esp, &syscall_num) == -1)
         goto fail;
 
-    // TODO(mf): Handle new syscalls
-
     switch (syscall_num) {
     case SYS_HALT:
         SYSCALL_0(sys_halt);
@@ -205,18 +203,29 @@ static int sys_wait (tid_t tid) {
 static int sys_read (int fd, void *buffer, unsigned size) {
     // TODO(mf): Probably wrong
     struct file *file;
-    int ans;
+    int bytes_read;
 
     // TODO(mf): variable names
     lock_acquire(&filesys_lock);
 
 // TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
 
-    file = file_from_fd(fd);
-    ans = file_read(file, buffer, length);
+    // file = file_from_fd(fd);
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    // TODO(mf): do something with file
+
+
+    bytes_read = file_read(file, buffer, length);
 
     lock_release(&filesys_lock);
-    return ans;
+    return bytes_read;
 
 }
 
@@ -237,7 +246,18 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
 
 // TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
 
-    file = file_from_fd(fd);
+    // file = file_from_fd(fd);
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    // TODO(mf): do something with file
+
+
     ans = file_write(file, buffer, length);
 
     lock_release(&filesys_lock);
@@ -381,7 +401,18 @@ static void sys_seek (int fd, unsigned position) {
 
 // TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
 
-    file = file_from_fd(fd);
+    // file = file_from_fd(fd);
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    // TODO(mf): do something with file
+
+
     file_seek(file);
 
     lock_release(&filesys_lock);
@@ -398,7 +429,18 @@ static unsigned sys_tell (int fd) {
 
 // TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
 
-    file = file_from_fd(fd);
+    // file = file_from_fd(fd);
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    // TODO(mf): do something with file
+
+
     ans = file_tell(file);
 
     lock_release(&filesys_lock);
