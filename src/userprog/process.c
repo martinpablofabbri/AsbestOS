@@ -303,6 +303,12 @@ void process_exit(void) {
     struct thread *cur = thread_current();
     uint32_t *pd;
 
+    /* Reenable write access to executing file, close */
+    if (cur->executing_file) {
+	file_allow_write(cur->executing_file);
+	file_close(cur->executing_file);
+    }
+    
     lock_acquire(&death_lock);
     /* Notify parent of death. */
     /* First, check to see if the parent is alive. */
@@ -451,6 +457,8 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         goto done; 
     }
 
+    file_deny_write(file);
+
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr ||
         memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7) || ehdr.e_type != 2 ||
@@ -530,7 +538,11 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
 done:
     /* We arrive here whether the load is successful or not. */
-    file_close(file);
+    if (!success) {
+	file_close(file);
+    } else {
+	t->executing_file = file;
+    }
     return success;
 }
 

@@ -9,6 +9,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "filesys/file.h"
 
 #include "threads/synch.h"
 
@@ -118,6 +119,7 @@ struct thread {
     uint32_t *pagedir;                  /*!< Page directory. */
     struct list open_files;
     int lowest_available_fd;
+    struct file *executing_file;
     /**@{*/
 #endif
 
