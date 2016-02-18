@@ -19,7 +19,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-/*! Lock used when a process is dying. */
+/*! Lock used to prevent problems of multiple threads dying at the
+  same time. */
 static struct lock death_lock;
 
 static thread_func start_process NO_RETURN;
@@ -69,10 +70,21 @@ void process_init(void) {
     lock_init(&death_lock);
 }
 
+/*! Define the format by which creation arguments are passed to child
+  processes. */
 struct process_start_args {
-    struct semaphore* start_sema;
-    bool* started_successfully;
-    char* argv_start;
+    struct semaphore* start_sema;        /*!< Semaphore used by the
+					   child to signal either
+					   successful or failed
+					   creation. */
+    bool* started_successfully;          /*!< Reference to a boolean
+					   value the child process
+					   sets in order to signal how
+					   creation went. */
+    char* argv_start;                    /*!< Pointer to the start of
+					   the argv array of
+					   arguments. The array is
+					   variable length. */
 };
 
 /*! Starts a new thread running a user program specified by the

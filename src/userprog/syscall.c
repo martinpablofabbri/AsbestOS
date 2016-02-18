@@ -32,13 +32,17 @@ static int sys_filesize(int fd);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
-static struct lock filesys_lock;
+static struct lock filesys_lock; /*!< Lock to prevent concurrent
+				   access to filesys.c functions. */
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
-    struct list_elem elem;
-    struct file *file;
-    int fd;
+    struct list_elem elem;               /*!< List element of
+					   file_item. */
+    struct file *file;                   /*!< Reference to file
+					   returned by filesys code. */
+    int fd;                              /*!< File descriptor
+					   associated with the file. */
 };
 
 bool access_ok (const void *addr, unsigned long size) {

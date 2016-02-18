@@ -105,7 +105,8 @@ struct thread {
     struct child_info* self_info;       /*!< Pointer to the child_info
                                            struct held by this
                                            thread's parent. */
-    int retval;
+    int retval;                         /*!< The return value of a
+					  thread. Initialized to -1. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
@@ -117,9 +118,13 @@ struct thread {
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
-    struct list open_files;
-    int lowest_available_fd;
-    struct file *executing_file;
+    struct list open_files;             /*!< List of files opened by
+                                           the process. */
+    int lowest_available_fd;            /*!< Keeps track of which file
+					  descriptor to give out next. */
+    struct file *executing_file;        /*!< Reference to the file
+                                           descriptor of the current
+                                           executable. */
     /**@{*/
 #endif
 
@@ -132,15 +137,32 @@ struct thread {
 /*! Information that a parent thread maintains about each of its
   children. */
 struct child_info {
-    struct child_info* prev;
-    struct child_info* next;
+    struct child_info* prev;            /*!< Pointer to the previous
+					  child_info struct in the
+					  parent's list of children. */
+    struct child_info* next;            /*!< Pointer to the next
+					  child_info struct in the
+					  parent's list of children. */
 
-    tid_t child_tid;
-    int retval;
+    tid_t child_tid;                    /*!< The thread id of the
+					  child process which will
+					  fill in the retval field. */
 
-    bool child_is_dead;
-    struct lock child_lock;
-    struct condition has_exited;
+    int retval;                         /*!< Return code of the child
+					  process. Defaults to -1. */
+
+    bool child_is_dead;                 /*!< Flag used to indicate
+					  when a child has died, and
+					  thus when retval is
+					  accurate. */
+    struct lock child_lock;             /*!< Lock that is accessible
+					  by both the parent and the
+					  parent's child with the
+					  given tid. */
+    struct condition has_exited;        /*!< Condition variable used
+                                           by the parent and the child
+                                           to signal the death of
+                                           child. */
 };
 
 

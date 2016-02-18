@@ -15,10 +15,11 @@ Jalen     Green     jpgreen@caltech.edu
 Martin    Fabbri    mfabbri@caltech.edu
 
 >> Specify how many late tokens you are using on this assignment:
+0
 
 >> What is the Git repository and commit hash for your submission?
 
-   Repository URL:
+   Repository URL: https://github.com/keeganryan/AsbestOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -39,7 +40,94 @@ Martin    Fabbri    mfabbri@caltech.edu
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-TODO
+struct thread {
+    ...
+    struct child_info* child_head;      /*!< Head of the doubly linked
+                                         list of children. */
+    struct child_info* self_info;       /*!< Pointer to the child_info
+                                          struct held by this
+                                          thread's parent. */
+    int retval;                         /*!< The return value of a
+					  thread. Initialized to -1. */
+    ...
+    struct list open_files;             /*!< List of files opened by
+                                           the process. */
+    int lowest_available_fd;            /*!< Keeps track of which file
+					  descriptor to give out next. */
+    struct file *executing_file;        /*!< Reference to the file
+                                           descriptor of the current
+                                           executable. */
+    ...
+};
+
+// In thread.h
+/*! Information that a parent thread maintains about each of its
+  children. */
+struct child_info {
+    struct child_info* prev;            /*!< Pointer to the previous
+					  child_info struct in the
+					  parent's list of children. */
+    struct child_info* next;            /*!< Pointer to the next
+					  child_info struct in the
+					  parent's list of children. */
+
+    tid_t child_tid;                    /*!< The thread id of the
+					  child process which will
+					  fill in the retval field. */
+
+    int retval;                         /*!< Return code of the child
+					  process. Defaults to -1. */
+
+    bool child_is_dead;                 /*!< Flag used to indicate
+					  when a child has died, and
+					  thus when retval is
+					  accurate. */
+    struct lock child_lock;             /*!< Lock that is accessible
+					  by both the parent and the
+					  parent's child with the
+					  given tid. */
+    struct condition has_exited;        /*!< Condition variable used
+                                           by the parent and the child
+                                           to signal the death of
+                                           child. */
+};
+
+// In syscall.c
+static struct lock filesys_lock; /*!< Lock to prevent concurrent
+				   access to filesys.c functions. */
+
+/* Struct for list element with a file and file descriptor */
+struct file_item {
+    struct list_elem elem;               /*!< List element of
+					   file_item. */
+    struct file *file;                   /*!< Reference to file
+					   returned by filesys code. */
+    int fd;                              /*!< File descriptor
+					   associated with the file. */
+};
+
+// In process.c
+/*! Lock used to prevent problems of multiple threads dying at the
+  same time. */
+static struct lock death_lock;
+
+/*! Define the format by which creation arguments are passed to child
+  processes. */
+struct process_start_args {
+    struct semaphore* start_sema;        /*!< Semaphore used by the
+					   child to signal either
+					   successful or failed
+					   creation. */
+    bool* started_successfully;          /*!< Reference to a boolean
+					   value the child process
+					   sets in order to signal how
+					   creation went. */
+    char* argv_start;                    /*!< Pointer to the start of
+					   the argv array of
+					   arguments. The array is
+					   variable length. */
+};
+
 
 ---- ALGORITHMS ----
 
