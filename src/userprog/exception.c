@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "userprog/gdt.h"
+#include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -76,11 +77,11 @@ static void kill(struct intr_frame *f) {
     case SEL_UCSEG:
         /* User's code segment, so it's a user exception, as we
            expected.  Kill the user process.  */
-	printf("%s: exit(%d)\n", thread_name(), thread_current()->retval);
-        printf("%s: dying due to interrupt %#04x (%s).\n",
-               thread_name(), f->vec_no, intr_name(f->vec_no));
-        intr_dump_frame(f);
-        thread_exit(); 
+	/* Disable for now, as it makes output cleaner. */
+        //printf("%s: dying due to interrupt %#04x (%s).\n",
+	//thread_name(), f->vec_no, intr_name(f->vec_no));
+        //intr_dump_frame(f);
+	sys_exit(-1);
 
     case SEL_KCSEG:
         /* Kernel's code segment, which indicates a kernel bug.

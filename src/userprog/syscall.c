@@ -21,7 +21,6 @@ int get_user_4 (const void *addr, uint32_t* dest);
 static struct file_item * fileitem_from_fd (int fd);
 
 static void sys_halt (void);
-static void sys_exit (int status);
 static tid_t sys_exec (const char *file);
 static int sys_wait (tid_t tid);
 static int sys_read (int fd, void *buffer, unsigned size);
@@ -34,6 +33,13 @@ static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
 static struct lock filesys_lock;
+
+/* Struct for list element with a file and file descriptor */
+struct file_item {
+    struct list_elem elem;
+    struct file *file;
+    int fd;
+};
 
 bool access_ok (const void *addr, unsigned long size) {
     // Function signature as approximately in "Understanding the Linux
@@ -178,7 +184,22 @@ static void sys_halt (void) {
     shutdown_power_off();
 }
 
-static void sys_exit (int status) {
+void sys_exit (int status) {
+    /* Clean up any file descriptors. */
+    struct list *open_files = &thread_current()->open_files;
+
+    lock_acquire(&filesys_lock);
+
+    while (!list_empty(open_files)) {
+	struct file_item *fitem = list_entry(list_pop_front(open_files),
+					     struct file_item,
+					     elem);
+	file_close(fitem->file);
+	free(fitem);
+    }
+
+    lock_release(&filesys_lock);
+
     printf("%s: exit(%d)\n", thread_name(), status);
     thread_current()->retval = status;
     thread_exit();
@@ -196,13 +217,6 @@ static int sys_wait (tid_t tid) {
 }
 
 //// File system syscalls
-
-/* Struct for list element with a file and file descriptor */
-struct file_item {
-    struct list_elem elem;
-    struct file *file;
-    int fd;
-};
 
 /* Get a file descriptor using a struct file*.
  *  Returns -1 on not finding file */
@@ -304,7 +318,7 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
 /* Create a file. sys_exits with error if passed an invalid name ptr */
 static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
-        sys_exit(-1);
+	sys_exit(-1);
 
     lock_acquire(&filesys_lock);
 
@@ -317,7 +331,7 @@ static bool sys_create(const char *name, uint32_t initial_size) {
 /* Remove file. sys_exits with error if passed an invalid name ptr */
 static bool sys_remove(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
-        sys_exit(-1);
+	sys_exit(-1);
 
     lock_acquire(&filesys_lock);
 
@@ -327,13 +341,13 @@ static bool sys_remove(const char *name) {
     return ret;
 }
 
-/* Open file. Returns -1 if file not found. */
+/* Open file. sys_exits with error if file not found. */
 static int sys_open(const char *name) {
     struct file *file;
     int fd;
 
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
-        sys_exit(-1);
+	sys_exit(-1);
 
     lock_acquire(&filesys_lock);
 
