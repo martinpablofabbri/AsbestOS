@@ -208,65 +208,6 @@ static void start_process(void *start_args_) {
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
 int process_wait(tid_t child_tid) {
-    /**
-       All threads must maintain an array of children tid/return
-       value/state tuples which is within the current thread's
-       page. Also needs to keep track of parent's return state.
-
-       ===========================
-       struct child
-         thread* child
-	 tid_t child_tid
-	 cond has_exited
-	 lock child_lock
-	 int retval
-
-       Each thread has:
-         List<child> of children allocated and freed by current thread
-	 Parent status
-         Pointer to child object the thread is in.
-
-       Option:
-       global lock for all process inheritance.
-         Slow but it would work.
-         More overhead waiting for a certain child to exit
-       One lock for every child object
-         What if the child dies before the lock is acquired?
-	 Check state once lock is acquired 
-       One lock for every child and parent
-         What order to access them, and could there be deadlock?
-	 
-
-      ==================
-        Child dying:
-	  Check if parent is still alive.
-	  If so, acquire parent's child lock. (could be thread unsafe)
-	  Inform all children that death is inevitable. (could be
-        thread unsafe)
-	  Clean up all children
-	  set return code of parent's child appropriately.
-	  Nullify parent's pointer to self (to indicate the child is
-        dead)
-	  cond_signal child's death to parent on child lock.
-	  release child lock
-
-	Parent waiting:
-	  Look through list of children until the appropriate tid is
-	  found.
-	  Acquire that child's lock.
-	  Check to see if the child thread is alive (non-null)
-	  If dead, eventually return retval.
-	  If alive, wait on child death condvar
-	  release child lock.
-	  Destruct child object.
-	  return retval
-
-	Parent exec:
-	  Construct child object.
-	  Start thread
-	  
-    */
-
     int return_code = -1;
 
     lock_acquire(&death_lock);
