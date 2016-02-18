@@ -1,11 +1,13 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <list.h>
 #include "devices/shutdown.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/malloc.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 #include "filesys/filesys.h"
@@ -185,18 +187,56 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
     return 0;
 }
 
-static int fd_from_file (struct file * file) {
-    // TODO(jg): turn file struct into a file descriptor (int)
-    //           for now, just cast the file struct address into int
-    int fd = (int) file;
-    return fd;
+
+//// File system syscalls
+struct file_item {
+    struct list_elem elem;
+    struct file *file;
+    int fd;
+};
+
+// Returns -1 on not finding file
+static int fd_from_file (struct file *file) {
+    struct thread *curr_thread = thread_current();
+    /* for (e = list_begin (&foo_list); e != list_end (&foo_list); */
+    /* 	 e = list_next (e)) */
+    /*     { */
+    /* 	    struct foo *f = list_entry (e, struct foo, elem); */
+    /* 	    ...do something with f... */
+    /* 		      } */
+    struct list_elem *e;
+    for (e = list_begin(&curr_thread->open_files);
+	 e != list_end(&curr_thread->open_files);
+	 e = list_next(e)) {
+	struct file_item *fitem = list_entry(e, struct file_item, elem);
+	if (fitem->file == file) {
+	    return fitem->fd;
+	}
+    }
+    // Did not find files with matching fd
+    return -1;
 }
 
+// Return NULL on not finding fd
 static struct file * file_from_fd (int fd) {
-    // TODO(jg) will change when change method of turning file structs to fds
-    struct file *file;
-    file = (struct file *) fd;
-    return file;
+    struct thread *curr_thread = thread_current();
+    /* for (e = list_begin (&foo_list); e != list_end (&foo_list); */
+    /* 	 e = list_next (e)) */
+    /*     { */
+    /* 	    struct foo *f = list_entry (e, struct foo, elem); */
+    /* 	    ...do something with f... */
+    /* 		      } */
+    struct list_elem *e;
+    for (e = list_begin(&curr_thread->open_files);
+	 e != list_end(&curr_thread->open_files);
+	 e = list_next(e)) {
+	struct file_item *fitem = list_entry(e, struct file_item, elem);
+	if (fitem->fd == fd) {
+	    return fitem->file;
+	}
+    }
+    // Did not find files with matching fd
+    return NULL;
 }
 
 static bool sys_create(const char *name, uint32_t initial_size) {
@@ -232,9 +272,16 @@ static int sys_open(const char *name) {
 
     lock_acquire(&filesys_lock);
 
+    struct file_item *fitem = malloc(sizeof(struct file_item));
     file = filesys_open(name); 
-    fd = fd_from_file(file);
+    fitem->file = file;
+    struct thread *curr_thread = thread_current();
+    fd = curr_thread->lowest_available_fd;
+    curr_thread->lowest_available_fd += 1;
 
+    fitem->fd = fd;
+
+    list_push_back(&curr_thread->open_files, &fitem->elem);
     lock_release(&filesys_lock);
     return fd;
 }
@@ -258,6 +305,7 @@ static void sys_close(int fd) {
 
     file = file_from_fd(fd);
     file_close(file);
+    // TODO(jg) remove file from opened files list
 
     lock_release(&filesys_lock);
 }
