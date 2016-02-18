@@ -55,6 +55,17 @@ struct process_start_args {
                                            the argv array of
                                            arguments. The array is
                                            variable length. */
+                                           child to signal either
+                                           successful or failed
+                                           creation. */
+    bool* started_successfully;          /*!< Reference to a boolean
+                                           value the child process
+                                           sets in order to signal how
+                                           creation went. */
+    char* argv_start;                    /*!< Pointer to the start of
+                                           the argv array of
+                                           arguments. The array is
+                                           variable length. */
 };
 
 
