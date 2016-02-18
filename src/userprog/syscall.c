@@ -18,6 +18,7 @@ bool access_ok (const void *addr, unsigned long size);
 int get_user_1 (const void *addr, uint8_t* dest);
 int get_user_2 (const void *addr, uint16_t* dest);
 int get_user_4 (const void *addr, uint32_t* dest);
+static struct file_item * fileitem_from_fd (int fd);
 
 static void sys_halt (void);
 static void sys_exit (int status);
@@ -194,60 +195,6 @@ static int sys_wait (tid_t tid) {
     return process_wait(tid);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/////////////////
-/////////////////
-/////////////////
-
-static int sys_read (int fd, void *buffer, unsigned size) {
-    // TODO(mf): Probably wrong
-    struct file *file;
-    int bytes_read;
-
-    lock_acquire(&filesys_lock);
-    struct file_item *fitem = fileitem_from_fd(fd);
-    if (fitem == NULL) {
-        return;
-        // no matching file descriptor
-        // TODO(mf): check case
-    }
-    file = fitem->file;
-    bytes_read = file_read(file, buffer, length);
-
-    lock_release(&filesys_lock);
-    return bytes_read;
-
-}
-
-static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
-    // TODO(mf): probably wrong
-
-    /* INIT IMPLEMENTATION
-    if (fd == 1)
-        printf("%s",(char*)buffer);
-    return 0;
-    */
-
-    struct file *file;
-    int bytes_written;
-
-    lock_acquire(&filesys_lock);
-    struct file_item *fitem = fileitem_from_fd(fd);
-    if (fitem == NULL) {
-        return;
-        // no matching file descriptor
-        // TODO(mf): check case
-    }
-    file = fitem->file;
-    bytes_written = file_write(file, buffer, length);
-
-    lock_release(&filesys_lock);
-    return bytes_written;
-
-}
-
 //// File system syscalls
 
 /* Struct for list element with a file and file descriptor */
@@ -298,6 +245,62 @@ static struct file_item * fileitem_from_fd (int fd) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////////////////
+/////////////////
+/////////////////
+
+static int sys_read (int fd, void *buffer, unsigned size) {
+    // TODO(mf): Probably wrong
+    struct file *file;
+    int bytes_read;
+
+    lock_acquire(&filesys_lock);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+	lock_release(&filesys_lock);
+        return -1;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    bytes_read = file_read(file, buffer, size);
+
+    lock_release(&filesys_lock);
+    return bytes_read;
+
+}
+
+static int sys_write (int fd, const void *buffer, unsigned size) {
+    // TODO(mf): probably wrong
+
+    if (fd == 1) {
+        printf("%s",(char*)buffer);
+	// TODO(keegan): Proper return code?
+	return 0;
+    }
+
+    struct file *file;
+    int bytes_written;
+
+    lock_acquire(&filesys_lock);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+	lock_release(&filesys_lock);
+        return -1;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    bytes_written = file_write(file, buffer, size);
+
+    lock_release(&filesys_lock);
+    return bytes_written;
+
+}
+
 /* Create a file. sys_exits with error if passed an invalid name ptr */
 static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
@@ -337,6 +340,7 @@ static int sys_open(const char *name) {
     struct file_item *fitem = malloc(sizeof(struct file_item));
     file = filesys_open(name);
     if (file == NULL) {
+	lock_release(&filesys_lock);
         return -1;
     }
 
@@ -380,12 +384,13 @@ static void sys_seek (int fd, unsigned position) {
     lock_acquire(&filesys_lock);
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
+	lock_release(&filesys_lock);
         return;
         // no matching file descriptor
         // TODO(mf): check case
     }
     file = fitem->file;
-    file_seek(file);
+    file_seek(file, position);
 
     lock_release(&filesys_lock);
 
@@ -399,9 +404,11 @@ static unsigned sys_tell (int fd) {
     lock_acquire(&filesys_lock);
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-        return;
+	lock_release(&filesys_lock);
+        return 0;
         // no matching file descriptor
         // TODO(mf): check case
+	// TODO(keegan): What is the proper error code?
     }
     file = fitem->file;
     pos = file_tell(file);
@@ -426,6 +433,7 @@ static void sys_close(int fd) {
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
         // No matching file descriptor. File possibly already closed.
+	lock_release(&filesys_lock);
         return;
     }
     file = fitem->file;
