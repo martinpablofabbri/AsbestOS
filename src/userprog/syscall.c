@@ -234,17 +234,18 @@ static struct file_item * fileitem_from_fd (int fd) {
     return NULL;
 }
 
-/* TODO: COMMENT */
+/* Read size bytes from file, copy into butter and return bytes read */
 static int sys_read (int fd, void *buffer, unsigned size) {
-    // TODO(mf): Probably wrong
-
+    // Check for size 0
     if (size == 0) {
         return 0;
     }
 
+    // Access Checks
     if (!access_ok(buffer, size)) {
         sys_exit(-1);
     }
+
     struct file *file;
     int bytes_read;
 
@@ -254,7 +255,6 @@ static int sys_read (int fd, void *buffer, unsigned size) {
         lock_release(&filesys_lock);
         return -1;
         // no matching file descriptor
-        // TODO(mf): check case
     }
     file = fitem->file;
     bytes_read = file_read(file, buffer, size);
@@ -264,18 +264,19 @@ static int sys_read (int fd, void *buffer, unsigned size) {
 
 }
 
-/* TODO: COMMENT */
+/* Write size bytes into file, write from buffer and return bytes written */
 static int sys_write (int fd, const void *buffer, unsigned size) {
-    // TODO(mf): probably wrong
-
+    // Check for size 0
     if (size == 0) {
         return 0;
     }
 
+    // Access Checks
     if (!access_ok(buffer, size)) {
         sys_exit(-1);
     }
 
+    // Case when writing to STDOUT
     if (fd == 1) {
         printf("%s",(char*)buffer);
         // TODO(keegan): Proper return code?
@@ -291,7 +292,6 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
         lock_release(&filesys_lock);
         return -1;
         // no matching file descriptor
-        // TODO(mf): check case
     }
     file = fitem->file;
     bytes_written = file_write(file, buffer, size);
@@ -370,7 +370,7 @@ static int sys_filesize(int fd) {
     return length;
 }
 
-/* TODO: COMMENT */
+/* Move current position into file to new position */
 static void sys_seek (int fd, unsigned position) {
     struct file *file;
 
@@ -380,18 +380,15 @@ static void sys_seek (int fd, unsigned position) {
         lock_release(&filesys_lock);
         return;
         // no matching file descriptor
-        // TODO(mf): check case
     }
     file = fitem->file;
     file_seek(file, position);
 
     lock_release(&filesys_lock);
-
 }
 
-/* TODO: COMMENT */
+/* Get currect offset into file */
 static unsigned sys_tell (int fd) {
-    // TODO(mf): probably wrong
     struct file *file;
     unsigned pos;
 
@@ -401,7 +398,6 @@ static unsigned sys_tell (int fd) {
         lock_release(&filesys_lock);
         return 0;
         // no matching file descriptor
-        // TODO(mf): check case
         // TODO(keegan): What is the proper error code?
     }
     file = fitem->file;
@@ -409,7 +405,6 @@ static unsigned sys_tell (int fd) {
 
     lock_release(&filesys_lock);
     return pos;
-
 }
 
 /* Close file using file descriptor. */
