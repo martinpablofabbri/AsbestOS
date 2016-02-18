@@ -408,6 +408,11 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->retval = -1;
     t->magic = THREAD_MAGIC;
 
+#ifdef USERPROG
+    list_init(&t->open_files);
+    t->lowest_available_fd = 4;
+#endif
+
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
     intr_set_level(old_level);
