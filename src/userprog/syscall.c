@@ -274,6 +274,10 @@ static int sys_open(const char *name) {
 
     struct file_item *fitem = malloc(sizeof(struct file_item));
     file = filesys_open(name); 
+    if (file == NULL) {
+	return -1;
+    }
+
     fitem->file = file;
     struct thread *curr_thread = thread_current();
     fd = curr_thread->lowest_available_fd;
