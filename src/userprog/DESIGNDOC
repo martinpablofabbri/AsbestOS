@@ -1,5 +1,5 @@
                      +--------------------------+
-       	       	     |          CS 124          |
+                     |          CS 124          |
                      | PROJECT 4: USER PROGRAMS |
                      |     DESIGN DOCUMENT      |
                      +--------------------------+
@@ -40,6 +40,72 @@ Martin    Fabbri    mfabbri@caltech.edu
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/*! Define the format by which creation arguments are passed to child
+  processes. */
+struct process_start_args {
+    struct semaphore* start_sema;        /*!< Semaphore used by the
+                                           child to signal either
+                                           successful or failed
+                                           creation. */
+    bool* started_successfully;          /*!< Reference to a boolean
+                                           value the child process
+                                           sets in order to signal how
+                                           creation went. */
+    char* argv_start;                    /*!< Pointer to the start of
+                                           the argv array of
+                                           arguments. The array is
+                                           variable length. */
+};
+
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+We implemented argument parsing in two main parts. The first part is handled
+by the parent process. The parent process takes the argument string and parses
+it into an argv-style null terminated array. This array, and copies of all
+the arguments, is passed to a child process through a newly allocated page.
+When the child is starting up, it receives this argv-style array and is
+responsible for placing the arguments on the stack.
+
+To avoid overflowing the stack page, the raw argument strings are first copied
+onto the stack. Then the remaining space needed is easily calculated, and the
+argv array is pushed on, followed by the pointer to the argv array, argc, and
+the return value.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+strtok is not thread safe. If a thread calls strtok while another thread
+is also in the middle of a sequence of strtok calls, the state becomes
+corrupted.
+
+>> A4: In Pintos, the kernel separates commands into a executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+If there's a bug in the user level implementation, the consequences of
+triggering the bug are much less severe. If the bug is in the kernel
+implementation, it could cause a kernel panic and crash the system.
+
+If the shell does parsing, then more complicated commands like
+   "cat foo | grep bar > baz"
+will do as the shell specifies, instead of having the kernel interpret
+which of the tokens are files to be executed.
+
+                             SYSTEM CALLS
+                             ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
 struct thread {
     ...
     struct child_info* child_head;      /*!< Head of the doubly linked
@@ -48,12 +114,12 @@ struct thread {
                                           struct held by this
                                           thread's parent. */
     int retval;                         /*!< The return value of a
-					  thread. Initialized to -1. */
+                                          thread. Initialized to -1. */
     ...
     struct list open_files;             /*!< List of files opened by
                                            the process. */
     int lowest_available_fd;            /*!< Keeps track of which file
-					  descriptor to give out next. */
+                                          descriptor to give out next. */
     struct file *executing_file;        /*!< Reference to the file
                                            descriptor of the current
                                            executable. */
@@ -65,27 +131,27 @@ struct thread {
   children. */
 struct child_info {
     struct child_info* prev;            /*!< Pointer to the previous
-					  child_info struct in the
-					  parent's list of children. */
+                                          child_info struct in the
+                                          parent's list of children. */
     struct child_info* next;            /*!< Pointer to the next
-					  child_info struct in the
-					  parent's list of children. */
+                                          child_info struct in the
+                                          parent's list of children. */
 
     tid_t child_tid;                    /*!< The thread id of the
-					  child process which will
-					  fill in the retval field. */
+                                          child process which will
+                                          fill in the retval field. */
 
     int retval;                         /*!< Return code of the child
-					  process. Defaults to -1. */
+                                          process. Defaults to -1. */
 
     bool child_is_dead;                 /*!< Flag used to indicate
-					  when a child has died, and
-					  thus when retval is
-					  accurate. */
+                                          when a child has died, and
+                                          thus when retval is
+                                          accurate. */
     struct lock child_lock;             /*!< Lock that is accessible
-					  by both the parent and the
-					  parent's child with the
-					  given tid. */
+                                          by both the parent and the
+                                          parent's child with the
+                                          given tid. */
     struct condition has_exited;        /*!< Condition variable used
                                            by the parent and the child
                                            to signal the death of
@@ -94,16 +160,16 @@ struct child_info {
 
 // In syscall.c
 static struct lock filesys_lock; /*!< Lock to prevent concurrent
-				   access to filesys.c functions. */
+                                   access to filesys.c functions. */
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
     struct list_elem elem;               /*!< List element of
-					   file_item. */
+                                           file_item. */
     struct file *file;                   /*!< Reference to file
-					   returned by filesys code. */
+                                           returned by filesys code. */
     int fd;                              /*!< File descriptor
-					   associated with the file. */
+                                           associated with the file. */
 };
 
 // In process.c
@@ -111,67 +177,28 @@ struct file_item {
   same time. */
 static struct lock death_lock;
 
-/*! Define the format by which creation arguments are passed to child
-  processes. */
-struct process_start_args {
-    struct semaphore* start_sema;        /*!< Semaphore used by the
-					   child to signal either
-					   successful or failed
-					   creation. */
-    bool* started_successfully;          /*!< Reference to a boolean
-					   value the child process
-					   sets in order to signal how
-					   creation went. */
-    char* argv_start;                    /*!< Pointer to the start of
-					   the argv array of
-					   arguments. The array is
-					   variable length. */
-};
-
-
----- ALGORITHMS ----
-
->> A2: Briefly describe how you implemented argument parsing.  How do
->> you arrange for the elements of argv[] to be in the right order?
->> How do you avoid overflowing the stack page?
-
-TODO
-
----- RATIONALE ----
-
->> A3: Why does Pintos implement strtok_r() but not strtok()?
-
-TODO
-
->> A4: In Pintos, the kernel separates commands into a executable name
->> and arguments.  In Unix-like systems, the shell does this
->> separation.  Identify at least two advantages of the Unix approach.
-
-TODO
-
-                             SYSTEM CALLS
-                             ============
-
----- DATA STRUCTURES ----
-
->> B1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
->> enumeration.  Identify the purpose of each in 25 words or less.
-
-TODO
 
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
-TODO
+When a thread opens a file, a file descriptor is assigned to that file.
+The thread has a field that keeps track of the lowest unassigned file
+descriptor number. Each thread has a list of (struct file*, file descriptor)s.
+
+File descriptors are only unique within a single process.
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
 
-TODO
+We took an approach similar to the one used in linux. We implemented a
+function is_user_vaddr that returns true if a specified address and
+number of bytes lie within a user-accessible range. Then we built up
+function wrappers which run this check and return 1 bytes, 2 bytes,
+or 4 bytes. Writing could be done a similar way, but checking for memory
+accessibility is also sufficient here.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -180,12 +207,24 @@ TODO
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
-TODO
+In each case, there are only two. The is_user_vaddr function checks the
+beginning of a section in memory and the end of that section in memory,
+and returns true if both of those are valid. There is no room for improvement.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
-TODO
+Each parent maintains a list of children which it has started. Each element in
+the list contains the child's tid, the child's return code, and the child's
+status (dead or not dead). When the parent calls wait(), it scans through the
+list until it finds the specified child tid, or errors if it can't. The parent
+process then loops until the child's status is dead, while waiting on a condition
+variable within the loop.
+
+Each child has a reference to the list element created by its parent. When a
+child is exiting, it accesses this list element, sets the return value of the
+child, sets its status to dead, and then signals the condition variable that
+it just died.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -201,7 +240,24 @@ TODO
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
-TODO
+In order to make the code more readable, we implemented a number of macros.
+For example:
+
+#define SYSCALL_1(f,t1) ({                      \
+            uint32_t a1;                        \
+            if (get_user_4(esp + 1, &a1) == -1) \
+                goto fail;                      \
+            f((t1)a1);                          \
+        })
+
+This macro is used for calling kernel functions from the syscall handler with
+one argument. The macro tries to get 4 bytes from the stack. If this fails, the
+code jumps to the fail label, defined later in the function. If it succeeds, it
+casts the 4 bytes to the appropriate type and invokes the specified function.
+
+Whenever a user program encounters an error that requires the program to exit,
+the program calls sys_exit(). sys_exit() is responsible for cleaning up any
+temporarily allocated resources.
 
 ---- SYNCHRONIZATION ----
 
@@ -210,7 +266,17 @@ TODO
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
-TODO
+One of the arguments passed through the page used to create a new process
+is a reference to a semaphore and a reference to a boolean. The parent process
+initializes the semaphore to zero, and then passes the references to the
+soon-to-be created child thread. Then the parent tries to down the semaphore.
+When the child thread is scheduled, it initializes itself until it knows
+whether or not startup was successful. It then sets the boolean to the proper
+value and ups the semaphore. The child can then deallocate the page with
+the arguments, since that page only contained references to the semaphore
+and boolean. When the parent process successfully downs the semaphore, it
+is because the child has finished setting itself up, so the parent reads the
+boolean to determine if the startup was successful.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -219,24 +285,61 @@ TODO
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
-TODO
+There are multiple synchronous variables:
+death_lock: A global lock which is used when modifying structures related
+            to process death.
+child_lock: A lock that exists for every parent-child pair.
+has_exited: A condition variable that exists for every parent-child pair.
+
+When a process calls process_wait(), it first acquires the death lock, then
+scans through its children to find the related child lock. It then locks the
+child lock and releases the death lock. This ensures that the child cannot
+die while we search for it.
+
+Inside process_wait(), as long as the child process is not dead, the parent
+waits on has_exited using the child_lock.
+
+At the end of process_wait(), the child_lock is released.
+
+In process_exit(), the child acquires the death lock, then locks the child_lock
+it shares with its parent. Next the child sets the return value, sets its status
+to dead, and signals has_exited. Then it releases the child_lock and death_lock.
+The child also cleans up its list of its own children. If a child's parent is
+not alive, the child is unable to lookup the child_lock and skips notifying the
+parent.
+
+If the parent is not waiting on a certain child and the child dies, signalling
+the conditional variable does nothing, and the return value is still set. Since
+the list of children is maintained by the parent, the return value does not go
+out of memory when the child dies.
 
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
-TODO
+It's the way it's done in Linux as described in the course text, and
+we thought that was a good approach.
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
-TODO
+We use linear search to find the file struct associated with a file
+   descriptor, when it could be possible in constant time.
+
+It uses dynamic memory allocation, which has potential for leaks if
+   not handled carefully.
+
+There are no limits on the number of file descriptors. (Except INT_MAX
+   and system memory)
+
+Once a file descriptor is assigned within one thread, it is never
+   assigned again, even if the first file descriptor is closed.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
 
-TODO
+We did not change it.
 
                            SURVEY QUESTIONS
                            ================
@@ -261,4 +364,7 @@ website.
 >> students, either for future quarters or the remaining projects?
 
 >> Any other comments?
-
+I read the chapter on syscalls in "Understanding the Linux Kernel" on the plane
+flight to an interview. The next day, the interviewers asked a lot of questions
+about syscalls, including questions about the sysenter instruction. I credit
+CS124 with passing that interview.

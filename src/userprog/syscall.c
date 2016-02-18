@@ -297,8 +297,7 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
     // Case when writing to STDOUT
     if (fd == 1) {
         printf("%s",(char*)buffer);
-        // TODO(keegan): Proper return code?
-        return 0;
+        return size;
     }
 
     struct file *file;
@@ -416,7 +415,6 @@ static unsigned sys_tell (int fd) {
         lock_release(&filesys_lock);
         return 0;
         // no matching file descriptor
-        // TODO(keegan): What is the proper error code?
     }
     file = fitem->file;
     pos = file_tell(file);
