@@ -218,7 +218,7 @@ static int fd_from_file (struct file *file) {
 }
 
 // Return NULL on not finding fd
-static struct file * file_from_fd (int fd) {
+static struct file_item * fileitem_from_fd (int fd) {
     struct thread *curr_thread = thread_current();
     /* for (e = list_begin (&foo_list); e != list_end (&foo_list); */
     /* 	 e = list_next (e)) */
@@ -232,7 +232,7 @@ static struct file * file_from_fd (int fd) {
 	 e = list_next(e)) {
 	struct file_item *fitem = list_entry(e, struct file_item, elem);
 	if (fitem->fd == fd) {
-	    return fitem->file;
+	    return fitem;
 	}
     }
     // Did not find files with matching fd
@@ -296,7 +296,7 @@ static int sys_filesize(int fd) {
 
     lock_acquire(&filesys_lock);
 
-    file = file_from_fd(fd);
+    file = fileitem_from_fd(fd)->file;
     length = file_length(file);
 
     lock_release(&filesys_lock);
@@ -307,9 +307,16 @@ static void sys_close(int fd) {
     struct file *file;
     lock_acquire(&filesys_lock);
 
-    file = file_from_fd(fd);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+	// TODO(jg): could not find a matching fd, what do?
+	return;
+    }
+    file = fitem->file;
     file_close(file);
     // TODO(jg) remove file from opened files list
+    list_remove(&fitem->elem);
+    free(fitem);
 
     lock_release(&filesys_lock);
 }
