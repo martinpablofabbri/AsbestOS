@@ -23,11 +23,14 @@ static void sys_halt (void);
 static void sys_exit (int status);
 static tid_t sys_exec (const char *file);
 static int sys_wait (tid_t tid);
+static int sys_read (int fd, void *buffer, unsigned size);
 static int sys_write (int fd, const void *buffer, unsigned size);
 static bool sys_create(const char *name, uint32_t initial_size);
 static bool sys_remove(const char *name);
 static int sys_open(const char *name);
 static int sys_filesize(int fd);
+static void sys_seek (int fd, unsigned position);
+static unsigned sys_tell (int fd);
 static void sys_close(int fd);
 static struct lock filesys_lock;
 
@@ -36,36 +39,36 @@ bool access_ok (const void *addr, unsigned long size) {
     // Kernel," pg 412
     unsigned long a = (unsigned long) addr;
     if (a + size - 1 < a ||
-	!is_user_vaddr(addr) ||
-	!is_user_vaddr(addr + size - 1))
-	return false;
+        !is_user_vaddr(addr) ||
+        !is_user_vaddr(addr + size - 1))
+        return false;
 
     // TODO(keegan): this doesn't allow for the possibility of crossing
     // multiple page boundaries
     if (!pagedir_get_page(thread_current()->pagedir, addr) ||
-	!pagedir_get_page(thread_current()->pagedir, addr + size - 1))
-	return false;
+        !pagedir_get_page(thread_current()->pagedir, addr + size - 1))
+        return false;
 
     return true;
 }
 
 int get_user_1 (const void *addr, uint8_t* dest) {
     if (!access_ok(addr, 1))
-	return -1;
+        return -1;
     *dest = *(uint8_t*)addr;
     return 0;
 }
 
 int get_user_2 (const void *addr, uint16_t* dest) {
     if (!access_ok(addr, 2))
-	return -1;
+        return -1;
     *dest = *(uint16_t*)addr;
     return 0;
 }
 
 int get_user_4 (const void *addr, uint32_t* dest) {
     if (!access_ok(addr, 4))
-	return -1;
+        return -1;
     *dest = *(uint32_t*)addr;
     return 0;
 }
@@ -76,36 +79,36 @@ void syscall_init(void) {
 }
 
 
-#define SYSCALL_0(f) ({				\
-	    f();				\
-	})
+#define SYSCALL_0(f) ({                         \
+            f();                                \
+        })
 
-#define SYSCALL_1(f,t1) ({			\
-	    uint32_t a1;			\
-	    if (get_user_4(esp + 1, &a1) == -1)	\
-		goto fail;			\
-	    f((t1)a1);				\
-	})
+#define SYSCALL_1(f,t1) ({                      \
+            uint32_t a1;                        \
+            if (get_user_4(esp + 1, &a1) == -1) \
+                goto fail;                      \
+            f((t1)a1);                          \
+        })
 
-#define SYSCALL_2(f,t1,t2) ({			\
-	    uint32_t a1, a2;			\
-	    if (get_user_4(esp + 1, &a1) == -1)	\
-		goto fail;			\
-	    if (get_user_4(esp + 2, &a2) == -1)	\
-		goto fail;			\
-	    f((t1)a1,(t2)a2);			\
-	})
+#define SYSCALL_2(f,t1,t2) ({                   \
+            uint32_t a1, a2;                    \
+            if (get_user_4(esp + 1, &a1) == -1) \
+                goto fail;                      \
+            if (get_user_4(esp + 2, &a2) == -1) \
+                goto fail;                      \
+            f((t1)a1,(t2)a2);                   \
+        })
 
-#define SYSCALL_3(f,t1,t2,t3) ({		\
-	    uint32_t a1, a2, a3;		\
-	    if (get_user_4(esp + 1, &a1) == -1)	\
-		goto fail;			\
-	    if (get_user_4(esp + 2, &a2) == -1)	\
-		goto fail;			\
-	    if (get_user_4(esp + 3, &a3) == -1)	\
-		goto fail;			\
-	    f((t1)a1,(t2)a2,(t3)a3);		\
-	})
+#define SYSCALL_3(f,t1,t2,t3) ({                \
+            uint32_t a1, a2, a3;                \
+            if (get_user_4(esp + 1, &a1) == -1) \
+                goto fail;                      \
+            if (get_user_4(esp + 2, &a2) == -1) \
+                goto fail;                      \
+            if (get_user_4(esp + 3, &a3) == -1) \
+                goto fail;                      \
+            f((t1)a1,(t2)a2,(t3)a3);            \
+        })
 
 
 static void syscall_handler(struct intr_frame *f) {
@@ -114,41 +117,55 @@ static void syscall_handler(struct intr_frame *f) {
 
     uint32_t syscall_num;
     if (get_user_4(esp, &syscall_num) == -1)
-	goto fail;
+        goto fail;
 
     switch (syscall_num) {
     case SYS_HALT:
-	SYSCALL_0(sys_halt);
-	break;
+        SYSCALL_0(sys_halt);
+        break;
     case SYS_EXIT:
-	SYSCALL_1(sys_exit, int);
-	break;
+        SYSCALL_1(sys_exit, int);
+        break;
     case SYS_EXEC:
-	*eax = SYSCALL_1(sys_exec, const char*);
-	break;
+        *eax = SYSCALL_1(sys_exec, const char*);
+        break;
     case SYS_WAIT:
-	*eax = SYSCALL_1(sys_wait, tid_t);
-	break;
+        *eax = SYSCALL_1(sys_wait, tid_t);
+        break;
+    case SYS_READ:
+        // TODO(mf): Handle new syscalls
+        *eax = SYSCALL_3(sys_read, int, void*, unsigned);
+        break;
     case SYS_WRITE:
-	*eax = SYSCALL_3(sys_write, int, void*, unsigned);
-	break;
+        // TODO(mf): Handle new syscalls
+        *eax = SYSCALL_3(sys_write, int, void*, unsigned);
+        break;
     case SYS_CREATE:
-	*eax = SYSCALL_2(sys_create, const char*, uint32_t);
+        *eax = SYSCALL_2(sys_create, const char*, uint32_t);
         break;
     case SYS_REMOVE:
-	*eax = SYSCALL_1(sys_remove, const char*);
+        *eax = SYSCALL_1(sys_remove, const char*);
         break;
     case SYS_OPEN:
-	*eax = SYSCALL_1(sys_open, const char*);
+        *eax = SYSCALL_1(sys_open, const char*);
         break;
     case SYS_CLOSE:
-	SYSCALL_1(sys_close, int);
+        SYSCALL_1(sys_close, int);
         break;
     case SYS_FILESIZE:
-	*eax = SYSCALL_1(sys_filesize, int);
+        *eax = SYSCALL_1(sys_filesize, int);
+        break;
+    case SYS_SEEK:
+        // TODO(mf): Handle new syscalls
+        SYSCALL_2(sys_seek, int, unsigned);
+        break;
+    case SYS_TELL:
+        // TODO(mf): Handle new syscalls
+        *eax = SYSCALL_1(sys_tell, int);
+        break;
 
     default:
-	printf("Syscall %u: Not implemented.\n", syscall_num);
+        printf("Syscall %u: Not implemented.\n", syscall_num);
     }
     return;
 
@@ -177,12 +194,59 @@ static int sys_wait (tid_t tid) {
     return process_wait(tid);
 }
 
-static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
-    if (fd == 1)
-	printf("%s",(char*)buffer);
-    return 0;
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////////////////
+/////////////////
+/////////////////
+
+static int sys_read (int fd, void *buffer, unsigned size) {
+    // TODO(mf): Probably wrong
+    struct file *file;
+    int bytes_read;
+
+    lock_acquire(&filesys_lock);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    bytes_read = file_read(file, buffer, length);
+
+    lock_release(&filesys_lock);
+    return bytes_read;
+
 }
 
+static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
+    // TODO(mf): probably wrong
+
+    /* INIT IMPLEMENTATION
+    if (fd == 1)
+        printf("%s",(char*)buffer);
+    return 0;
+    */
+
+    struct file *file;
+    int bytes_written;
+
+    lock_acquire(&filesys_lock);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    bytes_written = file_write(file, buffer, length);
+
+    lock_release(&filesys_lock);
+    return bytes_written;
+
+}
 
 //// File system syscalls
 
@@ -199,42 +263,49 @@ static int fd_from_file (struct file *file) {
     struct thread *curr_thread = thread_current();
     struct list_elem *e;
     for (e = list_begin(&curr_thread->open_files);
-	 e != list_end(&curr_thread->open_files);
-	 e = list_next(e)) {
-	struct file_item *fitem = list_entry(e, struct file_item, elem);
-	if (fitem->file == file) {
-	    return fitem->fd;
-	}
+         e != list_end(&curr_thread->open_files);
+         e = list_next(e)) {
+        struct file_item *fitem = list_entry(e, struct file_item, elem);
+        if (fitem->file == file) {
+            return fitem->fd;
+        }
     }
     // Did not find files with matching fd
     return -1;
 }
 
 /* Get a fileitem from file descriptor.
- * Return NULL on not finding fileitem. */ 
+ * Return NULL on not finding fileitem. */
 static struct file_item * fileitem_from_fd (int fd) {
     struct thread *curr_thread = thread_current();
     struct list_elem *e;
     for (e = list_begin(&curr_thread->open_files);
-	 e != list_end(&curr_thread->open_files);
-	 e = list_next(e)) {
-	struct file_item *fitem = list_entry(e, struct file_item, elem);
-	if (fitem->fd == fd) {
-	    return fitem;
-	}
+         e != list_end(&curr_thread->open_files);
+         e = list_next(e)) {
+        struct file_item *fitem = list_entry(e, struct file_item, elem);
+        if (fitem->fd == fd) {
+            return fitem;
+        }
     }
     // Did not find files with matching fd
     return NULL;
 }
 
+/////////////////
+/////////////////
+/////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
 /* Create a file. sys_exits with error if passed an invalid name ptr */
 static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
-	sys_exit(-1);
-    
+        sys_exit(-1);
+
     lock_acquire(&filesys_lock);
 
-    bool ret = filesys_create(name, initial_size); 
+    bool ret = filesys_create(name, initial_size);
 
     lock_release(&filesys_lock);
     return ret;
@@ -243,11 +314,11 @@ static bool sys_create(const char *name, uint32_t initial_size) {
 /* Remove file. sys_exits with error if passed an invalid name ptr */
 static bool sys_remove(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
-	sys_exit(-1);
+        sys_exit(-1);
 
     lock_acquire(&filesys_lock);
 
-    bool ret = filesys_remove(name); 
+    bool ret = filesys_remove(name);
 
     lock_release(&filesys_lock);
     return ret;
@@ -259,14 +330,14 @@ static int sys_open(const char *name) {
     int fd;
 
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
-	sys_exit(-1);
+        sys_exit(-1);
 
     lock_acquire(&filesys_lock);
 
     struct file_item *fitem = malloc(sizeof(struct file_item));
-    file = filesys_open(name); 
+    file = filesys_open(name);
     if (file == NULL) {
-	return -1;
+        return -1;
     }
 
     fitem->file = file;
@@ -295,6 +366,58 @@ static int sys_filesize(int fd) {
     return length;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////////////////
+/////////////////
+/////////////////
+
+static void sys_seek (int fd, unsigned position) {
+    // TODO(mf): probably wrong
+    struct file *file;
+
+    lock_acquire(&filesys_lock);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    file_seek(file);
+
+    lock_release(&filesys_lock);
+
+}
+
+static unsigned sys_tell (int fd) {
+    // TODO(mf): probably wrong
+    struct file *file;
+    unsigned pos;
+
+    lock_acquire(&filesys_lock);
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return;
+        // no matching file descriptor
+        // TODO(mf): check case
+    }
+    file = fitem->file;
+    pos = file_tell(file);
+
+    lock_release(&filesys_lock);
+    return pos;
+
+}
+
+/////////////////
+/////////////////
+/////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
 /* Close file using file descriptor. */
 static void sys_close(int fd) {
     struct file *file;
@@ -302,8 +425,8 @@ static void sys_close(int fd) {
 
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-	// No matching file descriptor. File possibly already closed.
-	return;
+        // No matching file descriptor. File possibly already closed.
+        return;
     }
     file = fitem->file;
     file_close(file);
