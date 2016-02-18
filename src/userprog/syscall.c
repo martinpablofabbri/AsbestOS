@@ -134,23 +134,18 @@ static void syscall_handler(struct intr_frame *f) {
 	*eax = SYSCALL_3(sys_write, int, void*, unsigned);
 	break;
     case SYS_CREATE:
-	// TODO(jg)
 	*eax = SYSCALL_2(sys_create, const char*, uint32_t);
         break;
     case SYS_REMOVE:
-	// TODO(jg)
 	*eax = SYSCALL_1(sys_remove, const char*);
         break;
     case SYS_OPEN:
-	// TODO(jg)
 	*eax = SYSCALL_1(sys_open, const char*);
         break;
     case SYS_CLOSE:
-	// TODO(jg)
 	SYSCALL_1(sys_close, int);
         break;
     case SYS_FILESIZE:
-	// TODO(jg)
 	*eax = SYSCALL_1(sys_filesize, int);
 
     default:
@@ -189,21 +184,18 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
 
 
 //// File system syscalls
+
+/* Struct for list element with a file and file descriptor */
 struct file_item {
     struct list_elem elem;
     struct file *file;
     int fd;
 };
 
-// Returns -1 on not finding file
+/* Get a file descriptor using a struct file*.
+ *  Returns -1 on not finding file */
 static int fd_from_file (struct file *file) {
     struct thread *curr_thread = thread_current();
-    /* for (e = list_begin (&foo_list); e != list_end (&foo_list); */
-    /* 	 e = list_next (e)) */
-    /*     { */
-    /* 	    struct foo *f = list_entry (e, struct foo, elem); */
-    /* 	    ...do something with f... */
-    /* 		      } */
     struct list_elem *e;
     for (e = list_begin(&curr_thread->open_files);
 	 e != list_end(&curr_thread->open_files);
@@ -217,15 +209,10 @@ static int fd_from_file (struct file *file) {
     return -1;
 }
 
-// Return NULL on not finding fd
+/* Get a fileitem from file descriptor.
+ * Return NULL on not finding fileitem. */ 
 static struct file_item * fileitem_from_fd (int fd) {
     struct thread *curr_thread = thread_current();
-    /* for (e = list_begin (&foo_list); e != list_end (&foo_list); */
-    /* 	 e = list_next (e)) */
-    /*     { */
-    /* 	    struct foo *f = list_entry (e, struct foo, elem); */
-    /* 	    ...do something with f... */
-    /* 		      } */
     struct list_elem *e;
     for (e = list_begin(&curr_thread->open_files);
 	 e != list_end(&curr_thread->open_files);
@@ -239,6 +226,7 @@ static struct file_item * fileitem_from_fd (int fd) {
     return NULL;
 }
 
+/* Create a file. sys_exits with error if passed an invalid name ptr */
 static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
@@ -251,6 +239,7 @@ static bool sys_create(const char *name, uint32_t initial_size) {
     return ret;
 }
 
+/* Remove file. sys_exits with error if passed an invalid name ptr */
 static bool sys_remove(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
@@ -263,6 +252,7 @@ static bool sys_remove(const char *name) {
     return ret;
 }
 
+/* Open file. Returns -1 if file not found. */
 static int sys_open(const char *name) {
     struct file *file;
     int fd;
@@ -290,6 +280,7 @@ static int sys_open(const char *name) {
     return fd;
 }
 
+/* Get file size */
 static int sys_filesize(int fd) {
     struct file *file;
     int length;
@@ -303,18 +294,19 @@ static int sys_filesize(int fd) {
     return length;
 }
 
+/* Close file using file descriptor. */
 static void sys_close(int fd) {
     struct file *file;
     lock_acquire(&filesys_lock);
 
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-	// TODO(jg): could not find a matching fd, what do?
+	// No matching file descriptor. File possibly already closed.
 	return;
     }
     file = fitem->file;
     file_close(file);
-    // TODO(jg) remove file from opened files list
+    // remove file_item from opened files list and free
     list_remove(&fitem->elem);
     free(fitem);
 
