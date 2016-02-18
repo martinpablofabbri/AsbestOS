@@ -411,6 +411,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 #ifdef USERPROG
     list_init(&t->open_files);
     t->lowest_available_fd = 4;
+    t->executing_file = NULL;
 #endif
 
     old_level = intr_disable();
