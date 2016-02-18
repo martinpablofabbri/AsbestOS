@@ -205,13 +205,7 @@ static int sys_read (int fd, void *buffer, unsigned size) {
     struct file *file;
     int bytes_read;
 
-    // TODO(mf): variable names
     lock_acquire(&filesys_lock);
-
-// TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
-
-    // file = file_from_fd(fd);
-
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
         return;
@@ -219,9 +213,6 @@ static int sys_read (int fd, void *buffer, unsigned size) {
         // TODO(mf): check case
     }
     file = fitem->file;
-    // TODO(mf): do something with file
-
-
     bytes_read = file_read(file, buffer, length);
 
     lock_release(&filesys_lock);
@@ -239,15 +230,9 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
     */
 
     struct file *file;
-    int ans;
+    int bytes_written;
 
-    // TODO(mf): variable names
     lock_acquire(&filesys_lock);
-
-// TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
-
-    // file = file_from_fd(fd);
-
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
         return;
@@ -255,17 +240,12 @@ static int sys_write (int fd, const void *buffer, unsigned size UNUSED) {
         // TODO(mf): check case
     }
     file = fitem->file;
-    // TODO(mf): do something with file
-
-
-    ans = file_write(file, buffer, length);
+    bytes_written = file_write(file, buffer, length);
 
     lock_release(&filesys_lock);
-    return ans;
+    return bytes_written;
 
 }
-
-// TODO(mf): READ
 
 //// File system syscalls
 
@@ -396,13 +376,7 @@ static void sys_seek (int fd, unsigned position) {
     // TODO(mf): probably wrong
     struct file *file;
 
-    // TODO(mf): variable names
     lock_acquire(&filesys_lock);
-
-// TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
-
-    // file = file_from_fd(fd);
-
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
         return;
@@ -410,9 +384,6 @@ static void sys_seek (int fd, unsigned position) {
         // TODO(mf): check case
     }
     file = fitem->file;
-    // TODO(mf): do something with file
-
-
     file_seek(file);
 
     lock_release(&filesys_lock);
@@ -422,15 +393,9 @@ static void sys_seek (int fd, unsigned position) {
 static unsigned sys_tell (int fd) {
     // TODO(mf): probably wrong
     struct file *file;
-    unsigned ans;
+    unsigned pos;
 
-    // TODO(mf): variable names
     lock_acquire(&filesys_lock);
-
-// TODO(mf): No longer using file_from_fd(); change to fileitem_from_fd
-
-    // file = file_from_fd(fd);
-
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
         return;
@@ -438,13 +403,10 @@ static unsigned sys_tell (int fd) {
         // TODO(mf): check case
     }
     file = fitem->file;
-    // TODO(mf): do something with file
-
-
-    ans = file_tell(file);
+    pos = file_tell(file);
 
     lock_release(&filesys_lock);
-    return ans;
+    return pos;
 
 }
 
