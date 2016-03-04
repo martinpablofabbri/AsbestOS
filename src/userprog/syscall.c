@@ -52,11 +52,16 @@ bool access_ok (const void *addr, unsigned long size) {
         !is_user_vaddr(addr + size - 1))
         return false;
 
-    // TODO(keegan): this doesn't allow for the possibility of crossing
-    // multiple page boundaries
+    ASSERT(size <= PGSIZE);
+#ifdef VM
+    if (!page_valid_addr(addr) ||
+        !page_valid_addr(addr + size - 1))
+        return false;
+#else
     if (!pagedir_get_page(thread_current()->pagedir, addr) ||
         !pagedir_get_page(thread_current()->pagedir, addr + size - 1))
         return false;
+#endif
 
     return true;
 }

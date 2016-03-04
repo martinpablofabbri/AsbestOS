@@ -42,9 +42,7 @@ struct file * file_reopen(struct file *file) {
 void file_close(struct file *file) {
     if (file != NULL) {
         file_allow_write(file);
-	//filesys_lock();
         inode_close(file->inode);
-	//filesys_unlock();
         free(file); 
     }
 }

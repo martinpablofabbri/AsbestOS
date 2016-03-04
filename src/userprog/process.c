@@ -386,7 +386,7 @@ static bool setup_stack(void **esp);
 static bool validate_segment(const struct Elf32_Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
-                         bool writable);
+                         bool writable, const char* filename);
 
 /*! Loads an ELF executable from FILE_NAME into the current thread.  Stores the
     executable's entry point into *EIP and its initial stack pointer into *ESP.
@@ -472,7 +472,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
                     zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
                 }
                 if (!load_segment(file, file_page, (void *) mem_page,
-                                  read_bytes, zero_bytes, writable))
+                                  read_bytes, zero_bytes, writable, file_name))
                     goto done;
             }
             else {
@@ -562,7 +562,7 @@ static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
     error occurs. */
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
-                         bool writable) {
+                         bool writable, const char* filename) {
     ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
     ASSERT(pg_ofs(upage) == 0);
     ASSERT(ofs % PGSIZE == 0);
@@ -575,6 +575,22 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
+#ifdef VM
+        /* Get a page of memory. */
+	struct spt_entry* entry = page_add_user (upage);
+	if (entry == NULL)
+	    return false;
+
+	entry->src = SPT_SRC_EXEC;
+	strlcpy(entry->filename, filename, NAME_MAX + 1);
+	entry->file_ofs = ofs;
+	entry->read_bytes = page_read_bytes;
+	entry->writable = writable;
+	ofs += page_read_bytes;
+
+	// Force the page to load now
+	page_fault_recover(upage);
+#else
         /* Get a page of memory. */
         uint8_t *kpage = palloc_get_page(PAL_USER);
         if (kpage == NULL)
@@ -592,6 +608,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
             palloc_free_page(kpage);
             return false; 
         }
+#endif
 
         /* Advance. */
         read_bytes -= page_read_bytes;
@@ -605,7 +622,10 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     user virtual memory. */
 static bool setup_stack(void **esp) {
 #ifdef VM
-    if(page_add_user(((uint8_t *) PHYS_BASE) - PGSIZE)) {
+    struct spt_entry *e = page_add_user(((uint8_t *) PHYS_BASE) - PGSIZE);
+    if (e) {
+	e->src = SPT_SRC_ZERO;
+	e->writable = true;
 	*esp = PHYS_BASE;
 	return true;
     } else {

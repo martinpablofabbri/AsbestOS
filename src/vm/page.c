@@ -1,6 +1,6 @@
 #include "page.h"
 
-#include <list.h>
+#include <string.h>
 
 #include "userprog/pagedir.h"
 #include "threads/malloc.h"
@@ -8,38 +8,28 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/frame.h"
-
-
-/*! Represent a page of memory owned by the current user process.
- */
-struct spt_entry {
-    void* upage;                       /*!< Address of the user
-					 virtual page represented by
-					 this entry. */
-    struct list_elem elem;             /*!< List element. */
-    bool created;                      /*!< Has the page been created
-					 yet? */
-};
+#include "filesys/filesys.h"
 
 void init_spt_entry (struct spt_entry* entry);
 struct spt_entry* get_spt_entry (void* uaddr);
+bool retrieve_page (struct spt_entry* entry, void* kpage);
 
 /*! Adds a new user page at the given user virtual address.
-    Returns true if the operation was successful.
+    Returns the spt_entry if the operation was successful.
 */
-bool page_add_user (void* upage) {
+struct spt_entry* page_add_user (void* upage) {
     // TODO(keegan): Check to make sure there's not already a page here.
     struct spt_entry* entry;
 
     entry = (struct spt_entry*)malloc(sizeof(struct spt_entry));
     // TODO(keegan): free
     if (!entry)
-	return false;
+	return NULL;
     init_spt_entry(entry);
     entry->upage = upage;
     list_push_back(&thread_current()->supl_page_tbl, &entry->elem);
 
-    return true;
+    return entry;
 }
 
 /*! Attempt to recover from a page fault at the specified address.
@@ -56,9 +46,11 @@ bool page_fault_recover (void* uaddr) {
     if (kpage == NULL)
 	return false;
 
+    retrieve_page(entry, kpage);
+
     struct thread *t = thread_current();
     /* Map our page to the correct location. */
-    if (!pagedir_set_page(t->pagedir, upage, kpage, true)) {
+    if (!pagedir_set_page(t->pagedir, upage, kpage, entry->writable)) {
 	// TODO(keegan): frame_destroy?
 	return false;
     }
@@ -66,11 +58,17 @@ bool page_fault_recover (void* uaddr) {
     return true;
 }
 
+/*! Returns true if the given address is a valid one. */
+bool page_valid_addr (void* uaddr) {
+    struct spt_entry* entry = get_spt_entry(uaddr);
+    return (entry != NULL);
+}
 
 /*! Initialize the spt_entry variables. */
 void init_spt_entry (struct spt_entry* entry) {
     entry->created = false;
     entry->upage = NULL;
+    entry->file_ofs = 0;
 }
 
 /*! Return the spt_entry corresponding to a given userspace virtual
@@ -94,4 +92,34 @@ struct spt_entry* get_spt_entry (void* uaddr) {
     }
 
     return ret;
+}
+
+/*! Retrieve the pages. This function is called by the page fault
+  handler. If the specified spt page hasn't been created yet, create
+  it. Returns true on success. */
+bool retrieve_page (struct spt_entry* entry, void* kpage) {
+    if (!entry->created) {
+	if (entry->src == SPT_SRC_ZERO) {
+	    memset(kpage, 0, PGSIZE);
+	} else if (entry->src == SPT_SRC_EXEC) {
+	    struct file *f = filesys_open(entry->filename);
+	    if (f == NULL)
+		return false;
+	    file_seek(f, entry->file_ofs);
+	    if (file_read(f, kpage, entry->read_bytes) !=
+		(int) entry->read_bytes) {
+		return false;
+	    }
+	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
+	    file_close(f);
+	} else if (entry->src == SPT_SRC_FILE) {
+
+	} else {
+	    ASSERT(false);
+	}
+	entry->created = true;
+    } else {
+
+    }
+    return true;
 }

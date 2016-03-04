@@ -26,7 +26,7 @@ void frame_init (void) {
   the kernel virtual address of the acquired page. On failure, returns NULL.
  */
 void *frame_acquire (void) {
-    void* kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+    void* kpage = palloc_get_page(PAL_USER);
     if (!kpage)
 	return NULL;
 
