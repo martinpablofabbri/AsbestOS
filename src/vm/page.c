@@ -59,8 +59,7 @@ bool page_fault_recover (void* uaddr) {
     struct thread *t = thread_current();
     /* Map our page to the correct location. */
     if (!pagedir_set_page(t->pagedir, upage, kpage, true)) {
-	// TODO(keegan): frame_destroy
-	palloc_free_page(kpage);
+	// TODO(keegan): frame_destroy?
 	return false;
     }
     
