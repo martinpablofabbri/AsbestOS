@@ -9,8 +9,6 @@
 #include "threads/vaddr.h"
 #include "vm/frame.h"
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
 
 /*! Represent a page of memory owned by the current user process.
  */
@@ -31,10 +29,8 @@ struct spt_entry* get_spt_entry (void* uaddr);
 */
 bool page_add_user (void* upage) {
     // TODO(keegan): Check to make sure there's not already a page here.
-    uint8_t *kpage;
-    bool success = false;
-
     struct spt_entry* entry;
+
     entry = (struct spt_entry*)malloc(sizeof(struct spt_entry));
     // TODO(keegan): free
     if (!entry)
@@ -43,20 +39,7 @@ bool page_add_user (void* upage) {
     entry->upage = upage;
     list_push_back(&thread_current()->supl_page_tbl, &entry->elem);
 
-    kpage = frame_acquire();
-    if (kpage != NULL) {
-	//struct thread *t = thread_current();
-	/* Verify that there's not already a page at that virtual
-	   address, then map our page there. */
-	//success = (pagedir_get_page(t->pagedir, upage) == NULL &&
-	//pagedir_set_page(t->pagedir, upage, kpage, true));
-
-	// TODO(keegan): frame_destroy
-	success = true;
-        if (!success)
-            palloc_free_page(kpage);
-    }
-    return success;
+    return true;
 }
 
 /*! Attempt to recover from a page fault at the specified address.
@@ -68,8 +51,20 @@ bool page_fault_recover (void* uaddr) {
 	return false;
     }
 
-    printf("Found the page at %p\n", entry);
-    return false;
+    void* upage = (void*)((uintptr_t)uaddr & ~PGMASK);
+    void* kpage = frame_acquire();
+    if (kpage == NULL)
+	return false;
+
+    struct thread *t = thread_current();
+    /* Map our page to the correct location. */
+    if (!pagedir_set_page(t->pagedir, upage, kpage, true)) {
+	// TODO(keegan): frame_destroy
+	palloc_free_page(kpage);
+	return false;
+    }
+    
+    return true;
 }
 
 
@@ -101,5 +96,3 @@ struct spt_entry* get_spt_entry (void* uaddr) {
 
     return ret;
 }
-
-#pragma GCC pop_options
