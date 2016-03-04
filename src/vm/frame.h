@@ -1,15 +1,7 @@
 #ifndef VM_FRAME_H
 #define VM_FRAME_H
 
-#include <list.h>
-
-/*! Represent a page of physical memory from the user pool.
- */
-struct frame_entry {
-    struct list_elem elem;           /*!< List element. */
-    void *paddr;                     /*!< Physical address of the page. */
-};
-
+void frame_init(void);
 void *frame_acquire(void);
 
 // TODO

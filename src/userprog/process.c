@@ -18,7 +18,8 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "vm/frame.h"
+#include "vm/frame.h" //TODO(keegan): Do we still need this?
+#include "vm/page.h"
 
 /*! Lock used to prevent problems of multiple threads dying at the
   same time. */
@@ -575,11 +576,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
         /* Get a page of memory. */
-#ifdef VM
-        uint8_t *kpage = frame_acquire();
-#else
         uint8_t *kpage = palloc_get_page(PAL_USER);
-#endif
         if (kpage == NULL)
             return false;
 
@@ -607,6 +604,14 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 /*! Create a minimal stack by mapping a zeroed page at the top of
     user virtual memory. */
 static bool setup_stack(void **esp) {
+#ifdef VM
+    if(add_user_page(((uint8_t *) PHYS_BASE) - PGSIZE)) {
+	*esp = PHYS_BASE;
+	return true;
+    } else {
+	return false;
+    }
+#else
     uint8_t *kpage;
     bool success = false;
 
@@ -618,7 +623,7 @@ static bool setup_stack(void **esp) {
         else
             palloc_free_page(kpage);
     }
-    return success;
+#endif
 }
 
 /*! Fill in a stack by pushing the arguments in argv onto the stack. */
@@ -666,6 +671,7 @@ static bool setup_stack_arguments(void **esp, char **argv) {
     Returns true on success, false if UPAGE is already mapped or
     if memory allocation fails. */
 static bool install_page(void *upage, void *kpage, bool writable) {
+    // TODO(keegan): Delete this?
     struct thread *t = thread_current();
 
     /* Verify that there's not already a page at that virtual

@@ -1,6 +1,10 @@
 #ifndef VM_PAGE_H
 #define VM_PAGE_H
 
+#include <stdbool.h>
+
+bool add_user_page (void* upage);
+
 // include "threads/pte.h"
 
 // TODO
