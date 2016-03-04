@@ -21,9 +21,6 @@
 #include "vm/frame.h" //TODO(keegan): Do we still need this?
 #include "vm/page.h"
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-
 /*! Lock used to prevent problems of multiple threads dying at the
   same time. */
 static struct lock death_lock;
@@ -683,5 +680,3 @@ static bool install_page(void *upage, void *kpage, bool writable) {
     return (pagedir_get_page(t->pagedir, upage) == NULL &&
             pagedir_set_page(t->pagedir, upage, kpage, writable));
 }
-
-#pragma GCC pop_options
