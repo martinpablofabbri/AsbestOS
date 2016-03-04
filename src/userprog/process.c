@@ -18,6 +18,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/frame.h"
 
 /*! Lock used to prevent problems of multiple threads dying at the
   same time. */
@@ -574,7 +575,11 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
         /* Get a page of memory. */
+#ifdef VM
+        uint8_t *kpage = frame_acquire();
+#else
         uint8_t *kpage = palloc_get_page(PAL_USER);
+#endif
         if (kpage == NULL)
             return false;
 
