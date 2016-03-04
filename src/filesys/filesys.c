@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <stdio.h>
 #include <string.h>
+#include "threads/synch.h"
 #include "filesys/file.h"
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
@@ -10,11 +11,15 @@
 /*! Partition that contains the file system. */
 struct block *fs_device;
 
+static struct lock fs_lock;
+
 static void do_format(void);
 
 /*! Initializes the file system module.
     If FORMAT is true, reformats the file system. */
 void filesys_init(bool format) {
+    lock_init(&fs_lock);
+
     fs_device = block_get_role(BLOCK_FILESYS);
     if (fs_device == NULL)
         PANIC("No file system device found, can't initialize file system.");
@@ -85,3 +90,12 @@ static void do_format(void) {
     printf("done.\n");
 }
 
+/*! Acquire the filesystem lock. */
+void filesys_lock (void) {
+    lock_acquire(&fs_lock);
+}
+
+/*! Release the filesystem lock. */
+void filesys_unlock (void) {
+    lock_release(&fs_lock);
+}
