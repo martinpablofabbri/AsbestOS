@@ -21,6 +21,9 @@
 #include "vm/frame.h" //TODO(keegan): Do we still need this?
 #include "vm/page.h"
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 /*! Lock used to prevent problems of multiple threads dying at the
   same time. */
 static struct lock death_lock;
@@ -605,7 +608,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     user virtual memory. */
 static bool setup_stack(void **esp) {
 #ifdef VM
-    if(add_user_page(((uint8_t *) PHYS_BASE) - PGSIZE)) {
+    if(page_add_user(((uint8_t *) PHYS_BASE) - PGSIZE)) {
 	*esp = PHYS_BASE;
 	return true;
     } else {
@@ -623,6 +626,7 @@ static bool setup_stack(void **esp) {
         else
             palloc_free_page(kpage);
     }
+    return success;
 #endif
 }
 
@@ -680,3 +684,4 @@ static bool install_page(void *upage, void *kpage, bool writable) {
             pagedir_set_page(t->pagedir, upage, kpage, writable));
 }
 
+#pragma GCC pop_options

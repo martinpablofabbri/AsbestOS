@@ -125,8 +125,16 @@ struct thread {
     struct file *executing_file;        /*!< Reference to the file
                                            descriptor of the current
                                            executable. */
-    /**@{*/
+    /**@}*/
 #endif
+
+#ifdef VM
+    /*! Owned by vm/page.c. */
+    /**@{*/
+    struct list supl_page_tbl;          /*!< List of pages used by the
+					  process. */
+    /**@}*/
+#endif    
 
     /*! Owned by thread.c. */
     /**@{*/

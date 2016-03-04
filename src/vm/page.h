@@ -3,7 +3,8 @@
 
 #include <stdbool.h>
 
-bool add_user_page (void* upage);
+bool page_add_user (void* upage);
+bool page_fault_recover (void* uaddr);
 
 // include "threads/pte.h"
 
