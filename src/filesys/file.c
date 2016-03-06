@@ -21,14 +21,14 @@ struct file * file_open(struct inode *inode) {
         file->inode = inode;
         file->pos = 0;
         file->deny_write = false;
-	filesys_unlock();
+        filesys_unlock();
         return file;
     }
     else {
         inode_close(inode);
         free(file);
-	filesys_unlock();
-        return NULL; 
+        filesys_unlock();
+        return NULL;
     }
 }
 
@@ -43,7 +43,7 @@ void file_close(struct file *file) {
     if (file != NULL) {
         file_allow_write(file);
         inode_close(file->inode);
-        free(file); 
+        free(file);
     }
 }
 

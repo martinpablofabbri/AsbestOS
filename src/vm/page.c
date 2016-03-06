@@ -24,7 +24,7 @@ struct spt_entry* page_add_user (void* upage) {
     entry = (struct spt_entry*)malloc(sizeof(struct spt_entry));
     // TODO(keegan): free
     if (!entry)
-	return NULL;
+        return NULL;
     init_spt_entry(entry);
     entry->upage = upage;
     list_push_back(&thread_current()->supl_page_tbl, &entry->elem);
@@ -37,24 +37,24 @@ struct spt_entry* page_add_user (void* upage) {
 bool page_fault_recover (void* uaddr) {
     struct spt_entry* entry = get_spt_entry(uaddr);
     if (entry == NULL) {
-	/* The given uaddr is not one of the current process's. */
-	return false;
+        /* The given uaddr is not one of the current process's. */
+        return false;
     }
 
     void* upage = (void*)((uintptr_t)uaddr & ~PGMASK);
     void* kpage = frame_acquire();
     if (kpage == NULL)
-	return false;
+        return false;
 
     retrieve_page(entry, kpage);
 
     struct thread *t = thread_current();
     /* Map our page to the correct location. */
     if (!pagedir_set_page(t->pagedir, upage, kpage, entry->writable)) {
-	// TODO(keegan): frame_destroy?
-	return false;
+        // TODO(keegan): frame_destroy?
+        return false;
     }
-    
+
     return true;
 }
 
@@ -84,11 +84,11 @@ struct spt_entry* get_spt_entry (void* uaddr) {
     for (e = list_begin(spt_list); e != list_end(spt_list);
          e = list_next(e)) {
         struct spt_entry *s = list_entry(e, struct spt_entry, elem);
-	uintptr_t base = (uintptr_t)s->upage;
-	if (base <= ua && ua < base + PGSIZE) {
-	    ret = s;
-	    break;
-	}
+        uintptr_t base = (uintptr_t)s->upage;
+        if (base <= ua && ua < base + PGSIZE) {
+            ret = s;
+            break;
+        }
     }
 
     return ret;
@@ -99,25 +99,25 @@ struct spt_entry* get_spt_entry (void* uaddr) {
   it. Returns true on success. */
 bool retrieve_page (struct spt_entry* entry, void* kpage) {
     if (!entry->created) {
-	if (entry->src == SPT_SRC_ZERO) {
-	    memset(kpage, 0, PGSIZE);
-	} else if (entry->src == SPT_SRC_EXEC) {
-	    struct file *f = filesys_open(entry->filename);
-	    if (f == NULL)
-		return false;
-	    file_seek(f, entry->file_ofs);
-	    if (file_read(f, kpage, entry->read_bytes) !=
-		(int) entry->read_bytes) {
-		return false;
-	    }
-	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
-	    file_close(f);
-	} else if (entry->src == SPT_SRC_FILE) {
+        if (entry->src == SPT_SRC_ZERO) {
+            memset(kpage, 0, PGSIZE);
+        } else if (entry->src == SPT_SRC_EXEC) {
+            struct file *f = filesys_open(entry->filename);
+            if (f == NULL)
+                return false;
+            file_seek(f, entry->file_ofs);
+            if (file_read(f, kpage, entry->read_bytes) !=
+                (int) entry->read_bytes) {
+                return false;
+            }
+            memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
+            file_close(f);
+        } else if (entry->src == SPT_SRC_FILE) {
 
-	} else {
-	    ASSERT(false);
-	}
-	entry->created = true;
+        } else {
+            ASSERT(false);
+        }
+        entry->created = true;
     } else {
 
     }

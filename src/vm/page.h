@@ -10,9 +10,9 @@
 /*! Possible sources of data for a supplemental page table entry. */
 enum spt_source {
     SPT_SRC_FILE,                      /*!< The data is mapped from a
-					 file. */
+                                         file. */
     SPT_SRC_EXEC,                      /*!< The data comes from the
-					 executable. */
+                                         executable. */
     SPT_SRC_ZERO                       /*!< The data is all zeros. */
 };
 
@@ -20,18 +20,18 @@ enum spt_source {
  */
 struct spt_entry {
     void* upage;                       /*!< Address of the user
-					 virtual page represented by
-					 this entry. */
+                                         virtual page represented by
+                                         this entry. */
     struct list_elem elem;             /*!< List element. */
     bool created;                      /*!< Has the page been created
-					 yet? */
+                                         yet? */
     enum spt_source src;               /*!< What is the source of the
-					 data? */
+                                         data? */
     char filename[NAME_MAX+1];         /*!< Filename of the data
-					 source. */
+                                         source. */
     off_t file_ofs;                    /*!< Offset into the file. */
     size_t read_bytes;                 /*!< Number of bytes to
-					 read. */
+                                         read. */
     bool writable;                    /*!< Is the page writable? */
 };
 

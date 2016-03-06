@@ -38,11 +38,11 @@ static bool parse_command_string(const char *cmd_str, void* buf) {
     int argc = 0;
     unsigned i;
     for (i = 0; i < strlen(cmd_str); i++) {
-	if (cmd_str[i] != ' ') {
-	    if (i == 0 || cmd_str[i - 1] == ' ') {
-		argc++;
-	    }
-	}
+        if (cmd_str[i] != ' ') {
+            if (i == 0 || cmd_str[i - 1] == ' ') {
+                argc++;
+            }
+        }
     }
 
     /* Define the location to store the raw arguments. */
@@ -56,9 +56,9 @@ static bool parse_command_string(const char *cmd_str, void* buf) {
     /* Tokenize and save indices of now null-terminated tokens. */
     int count = 0;
     for (token = strtok_r(raw_args, " ", &saveptr);
-	 token != NULL;
-	 token = strtok_r(NULL, " ", &saveptr)) {
-	argv[count++] = token;
+         token != NULL;
+         token = strtok_r(NULL, " ", &saveptr)) {
+        argv[count++] = token;
     }
     argv[count] = NULL;
 
@@ -76,17 +76,17 @@ void process_init(void) {
   processes. */
 struct process_start_args {
     struct semaphore* start_sema;        /*!< Semaphore used by the
-					   child to signal either
-					   successful or failed
-					   creation. */
+                                           child to signal either
+                                           successful or failed
+                                           creation. */
     bool* started_successfully;          /*!< Reference to a boolean
-					   value the child process
-					   sets in order to signal how
-					   creation went. */
+                                           value the child process
+                                           sets in order to signal how
+                                           creation went. */
     char* argv_start;                    /*!< Pointer to the start of
-					   the argv array of
-					   arguments. The array is
-					   variable length. */
+                                           the argv array of
+                                           arguments. The array is
+                                           variable length. */
 };
 
 /*! Starts a new thread running a user program specified by the
@@ -115,7 +115,7 @@ tid_t process_execute(const char *cmd_str) {
 
     argv_copy = &args->argv_start;
     if (!parse_command_string(cmd_str,argv_copy))
-	return TID_ERROR;
+        return TID_ERROR;
 
     /* Initialize new child information structure for current thread. */
     struct child_info* child;
@@ -123,11 +123,11 @@ tid_t process_execute(const char *cmd_str) {
     init_child_info(child);
     struct thread* me = thread_current();
     if (me->child_head == NULL) {
-	me->child_head = child;
+        me->child_head = child;
     } else {
-	child->next = me->child_head;
-	me->child_head->prev = child;
-	me->child_head = child;
+        child->next = me->child_head;
+        me->child_head->prev = child;
+        me->child_head = child;
     }
 
     /* Create a new thread to execute CMD_STR. */
@@ -135,25 +135,25 @@ tid_t process_execute(const char *cmd_str) {
     tid = thread_create(argv_copy[0], PRI_DEFAULT, start_process, args);
 
     if (tid == TID_ERROR) {
-        palloc_free_page(args); 
+        palloc_free_page(args);
     }
 
     sema_down(&start_sema);
     if (!started_successfully) {
-	tid = TID_ERROR;
-	// Remove the head of the dead child
-	struct child_info* to_remove;
-	to_remove = me->child_head;
-	if (me->child_head->next) {
-	    me->child_head = me->child_head->next;
-	} else {
-	    me->child_head = NULL;
-	}
-	free(to_remove);
+        tid = TID_ERROR;
+        // Remove the head of the dead child
+        struct child_info* to_remove;
+        to_remove = me->child_head;
+        if (me->child_head->next) {
+            me->child_head = me->child_head->next;
+        } else {
+            me->child_head = NULL;
+        }
+        free(to_remove);
     } else {
-	child->child_tid = tid;
-	struct thread* child_thread = thread_by_tid(child->child_tid);
-	child_thread->self_info = child;
+        child->child_tid = tid;
+        struct thread* child_thread = thread_by_tid(child->child_tid);
+        child_thread->self_info = child;
     }
     lock_release(&death_lock);
 
@@ -176,7 +176,7 @@ static void start_process(void *start_args_) {
     success = load(argv[0], &if_.eip, &if_.esp);
 
     if (success)
-	success = setup_stack_arguments(&if_.esp, argv);
+        success = setup_stack_arguments(&if_.esp, argv);
 
     /* We know whether the startup was successful or not, so signal to
        the starting process. */
@@ -217,37 +217,37 @@ int process_wait(tid_t child_tid) {
     struct child_info* target = NULL;
     struct child_info* cur_kid = thread_current()->child_head;
     while (cur_kid) {
-	struct child_info* prev = cur_kid;
-	cur_kid = prev->next;
-	if (prev->child_tid == child_tid) {
-	    target = prev;
-	    break;
-	}
+        struct child_info* prev = cur_kid;
+        cur_kid = prev->next;
+        if (prev->child_tid == child_tid) {
+            target = prev;
+            break;
+        }
     }
 
     if (target)
-	lock_acquire(&target->child_lock);
+        lock_acquire(&target->child_lock);
 
     // Release the death lock so other threads can die.
     lock_release(&death_lock);
 
     if (target) {
-	while (!target->child_is_dead) {
-	    cond_wait(&target->has_exited, &target->child_lock);
-	}
-	return_code = target->retval;
-	// Remove target from list of children
-	if (!target->prev && !target->next) {
-	    // This is an only child
-	    thread_current()->child_head = NULL;
-	} else {
-	    if (target->prev)
-		target->prev->next = target->next;
-	    if (target->next)
-		target->next->prev = target->prev;
-	}
-	lock_release(&target->child_lock);
-	free(target);
+        while (!target->child_is_dead) {
+            cond_wait(&target->has_exited, &target->child_lock);
+        }
+        return_code = target->retval;
+        // Remove target from list of children
+        if (!target->prev && !target->next) {
+            // This is an only child
+            thread_current()->child_head = NULL;
+        } else {
+            if (target->prev)
+                target->prev->next = target->next;
+            if (target->next)
+                target->next->prev = target->prev;
+        }
+        lock_release(&target->child_lock);
+        free(target);
     }
 
     return return_code;
@@ -260,31 +260,31 @@ void process_exit(void) {
 
     /* Reenable write access to executing file, close */
     if (cur->executing_file) {
-	file_allow_write(cur->executing_file);
-	file_close(cur->executing_file);
+        file_allow_write(cur->executing_file);
+        file_close(cur->executing_file);
     }
-    
+
     lock_acquire(&death_lock);
     /* Notify parent of death. */
     /* First, check to see if the parent is alive. */
     struct child_info* info = cur->self_info;
     if (info != NULL) {
-	// Parent is alive
-	lock_acquire(&info->child_lock);
-	info->child_is_dead = true;
-	info->retval = cur->retval;
+        // Parent is alive
+        lock_acquire(&info->child_lock);
+        info->child_is_dead = true;
+        info->retval = cur->retval;
 
-	cond_signal(&info->has_exited, &info->child_lock);
-	lock_release(&info->child_lock);
+        cond_signal(&info->has_exited, &info->child_lock);
+        lock_release(&info->child_lock);
     }
 
     /* Notify all children of death. */
     struct child_info* cur_kid = cur->child_head;
     while (cur_kid) {
-	struct child_info* prev = cur_kid;
-	cur_kid = prev->next;
-	thread_by_tid(prev->child_tid)->self_info = NULL;
-	free(prev);
+        struct child_info* prev = cur_kid;
+        cur_kid = prev->next;
+        thread_by_tid(prev->child_tid)->self_info = NULL;
+        free(prev);
     }
 
     lock_release(&death_lock);
@@ -401,7 +401,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
     /* Allocate and activate page directory. */
     t->pagedir = pagedir_create();
-    if (t->pagedir == NULL) 
+    if (t->pagedir == NULL)
         goto done;
     process_activate();
 
@@ -409,7 +409,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     file = filesys_open(file_name);
     if (file == NULL) {
         printf("load: %s: open failed\n", file_name);
-        goto done; 
+        goto done;
     }
 
     file_deny_write(file);
@@ -420,7 +420,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         ehdr.e_machine != 3 || ehdr.e_version != 1 ||
         ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024) {
         printf("load: %s: error loading executable\n", file_name);
-        goto done; 
+        goto done;
     }
 
     /* Read program headers. */
@@ -494,9 +494,9 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 done:
     /* We arrive here whether the load is successful or not. */
     if (!success) {
-	file_close(file);
+        file_close(file);
     } else {
-	t->executing_file = file;
+        t->executing_file = file;
     }
     return success;
 }
@@ -509,8 +509,8 @@ static bool install_page(void *upage, void *kpage, bool writable);
     FILE and returns true if so, false otherwise. */
 static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
     /* p_offset and p_vaddr must have the same page offset. */
-    if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK)) 
-        return false; 
+    if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK))
+        return false;
 
     /* p_offset must point within FILE. */
     if (phdr->p_offset > (Elf32_Off) file_length(file))
@@ -518,12 +518,12 @@ static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
 
     /* p_memsz must be at least as big as p_filesz. */
     if (phdr->p_memsz < phdr->p_filesz)
-        return false; 
+        return false;
 
     /* The segment must not be empty. */
     if (phdr->p_memsz == 0)
         return false;
-  
+
     /* The virtual memory region must both start and end within the
        user address space range. */
     if (!is_user_vaddr((void *) phdr->p_vaddr))
@@ -577,19 +577,19 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 #ifdef VM
         /* Get a page of memory. */
-	struct spt_entry* entry = page_add_user (upage);
-	if (entry == NULL)
-	    return false;
+        struct spt_entry* entry = page_add_user (upage);
+        if (entry == NULL)
+            return false;
 
-	entry->src = SPT_SRC_EXEC;
-	strlcpy(entry->filename, filename, NAME_MAX + 1);
-	entry->file_ofs = ofs;
-	entry->read_bytes = page_read_bytes;
-	entry->writable = writable;
-	ofs += page_read_bytes;
+        entry->src = SPT_SRC_EXEC;
+        strlcpy(entry->filename, filename, NAME_MAX + 1);
+        entry->file_ofs = ofs;
+        entry->read_bytes = page_read_bytes;
+        entry->writable = writable;
+        ofs += page_read_bytes;
 
-	// Force the page to load now
-	page_fault_recover(upage);
+        // Force the page to load now
+        page_fault_recover(upage);
 #else
         /* Get a page of memory. */
         uint8_t *kpage = palloc_get_page(PAL_USER);
@@ -606,7 +606,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
             palloc_free_page(kpage);
-            return false; 
+            return false;
         }
 #endif
 
@@ -624,12 +624,12 @@ static bool setup_stack(void **esp) {
 #ifdef VM
     struct spt_entry *e = page_add_user(((uint8_t *) PHYS_BASE) - PGSIZE);
     if (e) {
-	e->src = SPT_SRC_ZERO;
-	e->writable = true;
-	*esp = PHYS_BASE;
-	return true;
+        e->src = SPT_SRC_ZERO;
+        e->writable = true;
+        *esp = PHYS_BASE;
+        return true;
     } else {
-	return false;
+        return false;
     }
 #else
     uint8_t *kpage;
@@ -653,10 +653,10 @@ static bool setup_stack_arguments(void **esp, char **argv) {
 
     int argc = 0;
     while (argv[argc]) {
-	int len = strlen(argv[argc]) + 1;
-	*esp -= len;
-	strlcpy(*esp, argv[argc], len);
-	argc++;
+        int len = strlen(argv[argc]) + 1;
+        *esp -= len;
+        strlcpy(*esp, argv[argc], len);
+        argc++;
     }
     void *esp_tmp = *esp;
 
@@ -667,9 +667,9 @@ static bool setup_stack_arguments(void **esp, char **argv) {
     int i;
     *(--(*argv_stack)) = NULL;
     for (i = argc - 1; i >= 0; i--) {
-	int len = strlen(argv[i]) + 1;
-	*(--(*argv_stack)) = esp_tmp;
-	esp_tmp += len;
+        int len = strlen(argv[i]) + 1;
+        *(--(*argv_stack)) = esp_tmp;
+        esp_tmp += len;
     }
 
     /* Push on argv and argc. */

@@ -28,16 +28,16 @@ void frame_init (void) {
 void *frame_acquire (void) {
     void* kpage = palloc_get_page(PAL_USER);
     if (!kpage)
-	return NULL;
+        return NULL;
 
     struct frame_entry* entry;
     entry = (struct frame_entry*)malloc(sizeof(struct frame_entry));
     if (entry) {
-	list_push_back(&all_frames, &entry->elem);
-	entry->kaddr = kpage;
+        list_push_back(&all_frames, &entry->elem);
+        entry->kaddr = kpage;
     } else {
-	palloc_free_page(kpage);
-	kpage = NULL;
+        palloc_free_page(kpage);
+        kpage = NULL;
     }
     return kpage;
 }
