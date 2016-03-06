@@ -24,9 +24,8 @@ bool retrieve_page (struct spt_entry* entry, void* kpage);
     Returns the spt_entry if the operation was successful.
 */
 struct spt_entry* page_add_user (void* upage) {
-    // TODO(keegan): Check to make sure there's not already a page here.
+    ASSERT(get_spt_entry(upage) == NULL);
     struct spt_entry* entry;
-
     entry = (struct spt_entry*)malloc(sizeof(struct spt_entry));
     // TODO(keegan): free
     if (!entry)
@@ -37,6 +36,56 @@ struct spt_entry* page_add_user (void* upage) {
 
     return entry;
 }
+
+/*! Maps a file into memory by creating several new user pages
+    containing the file's data. Assumes that there are no conflicts
+    with mapping the specified address and that the address is page
+    aligned. Returns true on success. */
+bool page_add_file (const char* fname, void* upage) {
+    ASSERT(pg_ofs(upage) == 0);
+
+    struct file* file = filesys_open(fname);
+    if (!file)
+        return false;
+
+    off_t size = file_length(file);
+    file_close(file);
+
+    if (size == 0)
+        return false;
+
+    off_t ofs = 0;
+    uint32_t read_bytes = size;
+    uint32_t zero_bytes = (size % PGSIZE == 0) ? 0 : PGSIZE - (size % PGSIZE);
+
+    while (read_bytes > 0 || zero_bytes > 0) {
+        /* Calculate how to fill this page.
+           We will read PAGE_READ_BYTES bytes from FILE
+           and zero the final PAGE_ZERO_BYTES bytes. */
+        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+        size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+	struct spt_entry* entry = page_add_user (upage);
+        //TODO(keegan): on failure, do something about previously
+        //allocated spt_entries
+	if (entry == NULL)
+	    return false;
+
+	entry->src = SPT_SRC_FILE;
+	strlcpy(entry->filename, fname, NAME_MAX + 1);
+	entry->file_ofs = ofs;
+	entry->read_bytes = page_read_bytes;
+	entry->writable = true;
+	ofs += page_read_bytes;
+
+        /* Advance. */
+        read_bytes -= page_read_bytes;
+        zero_bytes -= page_zero_bytes;
+        upage += PGSIZE;
+    }
+    return true;    
+}
+
 
 /*! Attempt to recover from a page fault at the specified address.
   Returns true if recovery was successful. */
