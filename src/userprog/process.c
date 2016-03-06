@@ -627,6 +627,7 @@ static bool setup_stack(void **esp) {
 	e->src = SPT_SRC_ZERO;
 	e->writable = true;
 	*esp = PHYS_BASE;
+        thread_current()->user_esp = *esp;
 	return true;
     } else {
 	return false;
@@ -638,10 +639,12 @@ static bool setup_stack(void **esp) {
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-        if (success)
+        if (success) {
             *esp = PHYS_BASE;
-        else
+            thread_current()->user_esp = *esp;
+        } else {
             palloc_free_page(kpage);
+        }
     }
     return success;
 #endif

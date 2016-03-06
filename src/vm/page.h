@@ -41,6 +41,7 @@ bool page_remove_file (const char* fname, void* upage);
 bool page_fault_recover (const void* uaddr);
 bool page_valid_addr (const void* uaddr, bool write);
 void page_extra_stack (const void* uaddr, void* esp);
+bool page_evict (struct spt_entry* entry);
 
 // include "threads/pte.h"
 

@@ -18,7 +18,7 @@
 
 void init_spt_entry (struct spt_entry* entry);
 struct spt_entry* get_spt_entry (const void* uaddr);
-bool retrieve_page (struct spt_entry* entry, void* kpage);
+bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame);
 
 /*! Adds a new user page at the given user virtual address.
     Returns the spt_entry if the operation was successful.
@@ -127,12 +127,13 @@ bool page_fault_recover (const void* uaddr) {
     }
 
     void* upage = (void*)((uintptr_t)uaddr & ~PGMASK);
-    void* kpage = frame_acquire();
-    if (kpage == NULL)
+    struct frame_entry* frame = frame_acquire();
+    if (frame == NULL)
 	return false;
+    void* kpage = frame->kpage;
 
     // TODO(keegan): error handling?
-    retrieve_page(entry, kpage);
+    retrieve_page(entry, frame);
 
     struct thread *t = thread_current();
     /* Map our page to the correct location. */
@@ -186,7 +187,9 @@ struct spt_entry* get_spt_entry (const void* uaddr) {
 /*! Retrieve the pages. This function is called by the page fault
   handler. If the specified spt page hasn't been created yet, create
   it. Returns true on success. */
-bool retrieve_page (struct spt_entry* entry, void* kpage) {
+bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
+    void* kpage = frame->kpage;
+
     if (!entry->created) {
 	if (entry->src == SPT_SRC_ZERO) {
 	    memset(kpage, 0, PGSIZE);
@@ -210,6 +213,7 @@ bool retrieve_page (struct spt_entry* entry, void* kpage) {
     } else {
 
     }
+    frame->spt = entry;
     return true;
 }
 
@@ -231,6 +235,11 @@ void page_extra_stack (const void* uaddr, void* esp) {
 	    ent->writable = true;
 	}
     }
+}
+
+/*! Evicts the specified page. Returns true on success. */
+bool page_evict (struct spt_entry* entry) {
+    return false;
 }
 
 #pragma GCC pop_options
