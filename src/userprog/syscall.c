@@ -15,8 +15,7 @@
 #include "filesys/file.h"
 
 static void syscall_handler(struct intr_frame *);
-bool access_ok (const void *addr, unsigned long size);
-bool access_ok_write (const void *addr, unsigned long size);
+bool access_ok (const void *addr, unsigned long size, bool write);
 int get_user_1 (const void *addr, uint8_t* dest);
 int get_user_2 (const void *addr, uint16_t* dest);
 int get_user_4 (const void *addr, uint32_t* dest);
@@ -45,56 +44,53 @@ struct file_item {
 					   associated with the file. */
 };
 
-bool access_ok (const void *addr, unsigned long size) {
-    // Function signature as approximately in "Understanding the Linux
-    // Kernel," pg 412
+/*! Return true if we are allowed to access the buffer at the given
+  address. */
+bool access_ok (const void *addr, unsigned long size, bool write) {
     unsigned long a = (unsigned long) addr;
     if (a + size - 1 < a ||
         !is_user_vaddr(addr) ||
         !is_user_vaddr(addr + size - 1))
         return false;
 
-    ASSERT(size <= PGSIZE);
+    void* buf = (void *)addr;
+
 #ifdef VM
-    if (!page_valid_addr(addr, false) ||
-        !page_valid_addr(addr + size - 1, false))
+    while (buf < addr + size - 1) {
+        if (!page_valid_addr(buf, write))
+            return false;
+        buf += PGSIZE;
+    }
+    if (!page_valid_addr(addr + size - 1, write))
         return false;
 #else
-    if (!pagedir_get_page(thread_current()->pagedir, addr) ||
-        !pagedir_get_page(thread_current()->pagedir, addr + size - 1))
-        return false;
-#endif
-
-    return true;
-}
-
-bool access_ok_write (const void *addr, unsigned long size) {
-    if (!access_ok(addr, size))
-        return false;
-#ifdef VM
-    if (!page_valid_addr(addr, true) ||
-        !page_valid_addr(addr + size - 1, true))
+    while (buf < addr + size - 1) {
+        if (!pagedir_get_page(thread_current()->pagedir, buf))
+            return false;
+        buf += PGSIZE;
+    }
+    if (!pagedir_get_page(thread_current()->pagedir, addr + size - 1))
         return false;
 #endif
     return true;
 }
 
 int get_user_1 (const void *addr, uint8_t* dest) {
-    if (!access_ok(addr, 1))
+    if (!access_ok(addr, 1, false))
         return -1;
     *dest = *(uint8_t*)addr;
     return 0;
 }
 
 int get_user_2 (const void *addr, uint16_t* dest) {
-    if (!access_ok(addr, 2))
+    if (!access_ok(addr, 2, false))
         return -1;
     *dest = *(uint16_t*)addr;
     return 0;
 }
 
 int get_user_4 (const void *addr, uint32_t* dest) {
-    if (!access_ok(addr, 4))
+    if (!access_ok(addr, 4, false))
         return -1;
     *dest = *(uint32_t*)addr;
     return 0;
@@ -218,7 +214,7 @@ void sys_exit (int status) {
 }
 
 static tid_t sys_exec (const char *file) {
-    if (!access_ok(file, 1))
+    if (!access_ok(file, 1, false))
         return -1;
     tid_t ret = process_execute(file);
     return (ret == TID_ERROR) ? -1 : ret;
@@ -272,7 +268,7 @@ static int sys_read (int fd, void *buffer, unsigned size) {
     }
 
     // Access Checks
-    if (!access_ok_write(buffer, size)) {
+    if (!access_ok(buffer, size, true)) {
         sys_exit(-1);
     }
 
@@ -299,7 +295,7 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
     }
 
     // Access Checks
-    if (!access_ok(buffer, size)) {
+    if (!access_ok(buffer, size, false)) {
         sys_exit(-1);
     }
 
@@ -326,7 +322,7 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
 
 /* Create a file. sys_exits with error if passed an invalid name ptr */
 static bool sys_create(const char *name, uint32_t initial_size) {
-    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *), false))
 	sys_exit(-1);
 
     bool ret = filesys_create(name, initial_size);
@@ -336,7 +332,7 @@ static bool sys_create(const char *name, uint32_t initial_size) {
 
 /* Remove file. sys_exits with error if passed an invalid name ptr */
 static bool sys_remove(const char *name) {
-    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *), false))
 	sys_exit(-1);
 
     bool ret = filesys_remove(name);
@@ -349,7 +345,7 @@ static int sys_open(const char *name) {
     struct file *file;
     int fd;
 
-    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *), false))
 	sys_exit(-1);
 
     struct file_item *fitem = malloc(sizeof(struct file_item));
