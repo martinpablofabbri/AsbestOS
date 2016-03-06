@@ -145,7 +145,7 @@ static void page_fault(struct intr_frame *f) {
 #ifdef VM
     void *user_esp = user ? f->esp : thread_current()->user_esp;
     page_extra_stack (fault_addr, user_esp);
-    if (page_fault_recover(fault_addr)) {
+    if (not_present && page_fault_recover(fault_addr)) {
 	return;
     }
 #endif

@@ -17,7 +17,7 @@
 #pragma GCC optimize ("O0")
 
 void init_spt_entry (struct spt_entry* entry);
-struct spt_entry* get_spt_entry (void* uaddr);
+struct spt_entry* get_spt_entry (const void* uaddr);
 bool retrieve_page (struct spt_entry* entry, void* kpage);
 
 /*! Adds a new user page at the given user virtual address.
@@ -40,7 +40,7 @@ struct spt_entry* page_add_user (void* upage) {
 
 /*! Attempt to recover from a page fault at the specified address.
   Returns true if recovery was successful. */
-bool page_fault_recover (void* uaddr) {
+bool page_fault_recover (const void* uaddr) {
     struct spt_entry* entry = get_spt_entry(uaddr);
     if (entry == NULL) {
 	/* The given uaddr is not one of the current process's. */
@@ -65,12 +65,13 @@ bool page_fault_recover (void* uaddr) {
     return true;
 }
 
-/*! Returns true if the given address is a valid one. */
-bool page_valid_addr (void* uaddr) {
+/*! Returns true if the given address is a valid one. If WRITE is set
+    and the page is not writable, the address is not valid. */
+bool page_valid_addr (const void* uaddr, bool write) {
     // TODO(keegan): Assert we're in kernel mode
     page_extra_stack (uaddr, thread_current()->user_esp);
     struct spt_entry* entry = get_spt_entry(uaddr);
-    return (entry != NULL);
+    return (entry != NULL && (!write || entry->writable));
 }
 
 /*! Initialize the spt_entry variables. */
@@ -83,7 +84,7 @@ void init_spt_entry (struct spt_entry* entry) {
 /*! Return the spt_entry corresponding to a given userspace virtual
   address UADDR. Returns NULL if the given userspace address does not
   correspond to any entry in the Supplemental Page Table. */
-struct spt_entry* get_spt_entry (void* uaddr) {
+struct spt_entry* get_spt_entry (const void* uaddr) {
     struct list_elem *e;
     struct spt_entry* ret = NULL;
 
@@ -137,7 +138,7 @@ bool retrieve_page (struct spt_entry* entry, void* kpage) {
   address is likely due to stack growth. If it is, add a new page. 
   If adding the new page fails, the error will be caught later by the
   page fault handler. */
-void page_extra_stack (void* uaddr, void* esp) {
+void page_extra_stack (const void* uaddr, void* esp) {
     uintptr_t u = (uintptr_t)uaddr;
     uintptr_t e = (uintptr_t)esp;
     if (e <= u + 32 &&

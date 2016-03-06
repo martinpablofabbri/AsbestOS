@@ -10,11 +10,13 @@
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "vm/page.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 
 static void syscall_handler(struct intr_frame *);
 bool access_ok (const void *addr, unsigned long size);
+bool access_ok_write (const void *addr, unsigned long size);
 int get_user_1 (const void *addr, uint8_t* dest);
 int get_user_2 (const void *addr, uint16_t* dest);
 int get_user_4 (const void *addr, uint32_t* dest);
@@ -54,8 +56,8 @@ bool access_ok (const void *addr, unsigned long size) {
 
     ASSERT(size <= PGSIZE);
 #ifdef VM
-    if (!page_valid_addr(addr) ||
-        !page_valid_addr(addr + size - 1))
+    if (!page_valid_addr(addr, false) ||
+        !page_valid_addr(addr + size - 1, false))
         return false;
 #else
     if (!pagedir_get_page(thread_current()->pagedir, addr) ||
@@ -63,6 +65,17 @@ bool access_ok (const void *addr, unsigned long size) {
         return false;
 #endif
 
+    return true;
+}
+
+bool access_ok_write (const void *addr, unsigned long size) {
+    if (!access_ok(addr, size))
+        return false;
+#ifdef VM
+    if (!page_valid_addr(addr, true) ||
+        !page_valid_addr(addr + size - 1, true))
+        return false;
+#endif
     return true;
 }
 
@@ -259,7 +272,7 @@ static int sys_read (int fd, void *buffer, unsigned size) {
     }
 
     // Access Checks
-    if (!access_ok(buffer, size)) {
+    if (!access_ok_write(buffer, size)) {
         sys_exit(-1);
     }
 
