@@ -10,6 +10,12 @@
 #include "vm/frame.h"
 #include "filesys/filesys.h"
 
+/*! Maximum stack size is 8MB. */
+#define MAX_STACK_SIZE 0x800000
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 void init_spt_entry (struct spt_entry* entry);
 struct spt_entry* get_spt_entry (void* uaddr);
 bool retrieve_page (struct spt_entry* entry, void* kpage);
@@ -46,6 +52,7 @@ bool page_fault_recover (void* uaddr) {
     if (kpage == NULL)
 	return false;
 
+    // TODO(keegan): error handling?
     retrieve_page(entry, kpage);
 
     struct thread *t = thread_current();
@@ -60,6 +67,8 @@ bool page_fault_recover (void* uaddr) {
 
 /*! Returns true if the given address is a valid one. */
 bool page_valid_addr (void* uaddr) {
+    // TODO(keegan): Assert we're in kernel mode
+    page_extra_stack (uaddr, thread_current()->user_esp);
     struct spt_entry* entry = get_spt_entry(uaddr);
     return (entry != NULL);
 }
@@ -123,3 +132,25 @@ bool retrieve_page (struct spt_entry* entry, void* kpage) {
     }
     return true;
 }
+
+/*! Examines the faulting address. Heuristically determines if the
+  address is likely due to stack growth. If it is, add a new page. 
+  If adding the new page fails, the error will be caught later by the
+  page fault handler. */
+void page_extra_stack (void* uaddr, void* esp) {
+    uintptr_t u = (uintptr_t)uaddr;
+    uintptr_t e = (uintptr_t)esp;
+    if (e <= u + 32 &&
+        u < (unsigned)PHYS_BASE &&
+	u >= (unsigned)(PHYS_BASE - MAX_STACK_SIZE)) {
+	/* Install page. */
+	void* upage = (void*)(u & ~PGMASK);
+	struct spt_entry *ent = page_add_user(upage);
+	if (ent) {
+	    ent->src = SPT_SRC_ZERO;
+	    ent->writable = true;
+	}
+    }
+}
+
+#pragma GCC pop_options

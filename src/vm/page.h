@@ -38,6 +38,7 @@ struct spt_entry {
 struct spt_entry* page_add_user (void* upage);
 bool page_fault_recover (void* uaddr);
 bool page_valid_addr (void* uaddr);
+void page_extra_stack (void* uaddr, void* esp);
 
 // include "threads/pte.h"
 

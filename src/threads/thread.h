@@ -125,6 +125,10 @@ struct thread {
     struct file *executing_file;        /*!< Reference to the file
                                            descriptor of the current
                                            executable. */
+    void* user_esp;                     /*!< When the program is
+                                           executing, the stack
+                                           pointer of the user
+                                           program. */
     /**@}*/
 #endif
 

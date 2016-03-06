@@ -143,6 +143,8 @@ static void page_fault(struct intr_frame *f) {
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
 #ifdef VM
+    void *user_esp = user ? f->esp : thread_current()->user_esp;
+    page_extra_stack (fault_addr, user_esp);
     if (page_fault_recover(fault_addr)) {
 	return;
     }

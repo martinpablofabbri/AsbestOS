@@ -127,6 +127,7 @@ void syscall_init(void) {
 static void syscall_handler(struct intr_frame *f) {
     uint32_t* esp = f->esp;
     int *eax = (int *)&f->eax;
+    thread_current()->user_esp = esp;
 
     uint32_t syscall_num;
     if (get_user_4(esp, &syscall_num) == -1)
