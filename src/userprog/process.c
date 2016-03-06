@@ -289,6 +289,13 @@ void process_exit(void) {
 
     lock_release(&death_lock);
 
+#ifdef VM
+    /* Clean up user program page data structures. */
+    page_kill_all();
+    // TODO(keegan): Pages aren't actually freed until later. Race
+    // condition?
+#endif
+
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
     pd = cur->pagedir;

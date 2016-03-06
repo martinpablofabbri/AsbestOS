@@ -58,7 +58,6 @@ struct frame_entry* frame_create () {
 
     struct frame_entry* entry;
     entry = (struct frame_entry*)malloc(sizeof(struct frame_entry));
-    // TODO(keegan): free this somewhere
     if (entry) {
 	list_push_back(&all_frames, &entry->elem);
 	entry->kpage = kpage;

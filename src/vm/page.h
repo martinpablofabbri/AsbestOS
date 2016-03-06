@@ -4,6 +4,7 @@
 #include <list.h>
 #include <stdbool.h>
 
+#include "vm/frame.h"
 #include "filesys/off_t.h"
 #include "filesys/directory.h"
 
@@ -33,6 +34,9 @@ struct spt_entry {
     size_t read_bytes;                 /*!< Number of bytes to
 					 read. */
     bool writable;                    /*!< Is the page writable? */
+    
+    void* swap_info;                  /*!< Where in swap is the data? */
+    struct frame_entry* frame;        /*!< Which frame the page is in. */
 };
 
 struct spt_entry* page_add_user (void* upage);
@@ -42,6 +46,7 @@ bool page_fault_recover (const void* uaddr);
 bool page_valid_addr (const void* uaddr, bool write);
 void page_extra_stack (const void* uaddr, void* esp);
 bool page_evict (struct spt_entry* entry);
+void page_kill_all (void);
 
 // include "threads/pte.h"
 

@@ -7,7 +7,6 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "vm/frame.h"
 #include "filesys/filesys.h"
 
 /*! Maximum stack size is 8MB. */
@@ -27,7 +26,6 @@ struct spt_entry* page_add_user (void* upage) {
     ASSERT(get_spt_entry(upage) == NULL);
     struct spt_entry* entry;
     entry = (struct spt_entry*)malloc(sizeof(struct spt_entry));
-    // TODO(keegan): free
     if (!entry)
 	return NULL;
     init_spt_entry(entry);
@@ -159,6 +157,7 @@ void init_spt_entry (struct spt_entry* entry) {
     entry->created = false;
     entry->upage = NULL;
     entry->file_ofs = 0;
+    entry->frame = NULL;
 }
 
 /*! Return the spt_entry corresponding to a given userspace virtual
@@ -205,15 +204,21 @@ bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
 	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
 	    file_close(f);
 	} else if (entry->src == SPT_SRC_FILE) {
-
+            //TODO(keegan)
 	} else {
 	    ASSERT(false);
 	}
 	entry->created = true;
     } else {
-
+        if (entry->src == SPT_SRC_FILE) {
+            //TODO(keegan)
+        } else {
+            /* The data is in swap. */
+            //swap_read(kpage, entry->swap_info);
+        }
     }
     frame->spt = entry;
+    entry->frame = frame;
     return true;
 }
 
@@ -222,6 +227,10 @@ bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
   If adding the new page fails, the error will be caught later by the
   page fault handler. */
 void page_extra_stack (const void* uaddr, void* esp) {
+    struct spt_entry* entry = get_spt_entry(uaddr);
+    if (entry)
+        return;
+
     uintptr_t u = (uintptr_t)uaddr;
     uintptr_t e = (uintptr_t)esp;
     if (e <= u + 32 &&
@@ -239,7 +248,39 @@ void page_extra_stack (const void* uaddr, void* esp) {
 
 /*! Evicts the specified page. Returns true on success. */
 bool page_evict (struct spt_entry* entry) {
-    return false;
+    ASSERT(entry != NULL);
+    // TODO(keegan): check to see if we need to evict a page
+    if (entry->src == SPT_SRC_FILE) {
+        //TODO(keegan): write out to file
+        //entry->frame = NULL;
+        return false;
+    } else {
+        //TODO(keegan): write out to swap
+        //entry->swap_info = swap_write(entry->upage);
+        //entry->frame = NULL;
+        return false;
+    }
+}
+
+/*! Destruct and deallocate all page information related to a user
+  process when the user process dies. */
+void page_kill_all (void) {
+    struct thread* cur = thread_current();
+    struct spt_entry* ent;
+    while (!list_empty(&cur->supl_page_tbl)) {
+        ent = list_entry(list_pop_front(&cur->supl_page_tbl),
+                         struct spt_entry,
+                         elem);
+        if (ent->frame) {
+            ASSERT(ent->frame->kpage != NULL);
+            // TODO(keegan): Concurrency
+            list_remove(&ent->frame->elem);
+            // TODO(keegan): Unmap page
+            //palloc_free_page(ent->frame->kpage);
+            free(ent->frame);
+        }
+        free(ent);
+    }
 }
 
 #pragma GCC pop_options
