@@ -9,8 +9,9 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 #include "filesys/file.h"
-
+#include "userprog/syscall.h"
 #include "threads/synch.h"
 
 /*! States in a thread's life cycle. */
@@ -30,6 +31,18 @@ typedef int tid_t;
 #define PRI_MIN 0                       /*!< Lowest priority. */
 #define PRI_DEFAULT 31                  /*!< Default priority. */
 #define PRI_MAX 63                      /*!< Highest priority. */
+
+//// File memory mapping
+typedef struct _mmapitem {
+    struct hash_elem elem;
+    mapid_t mapid;
+    struct file *file;
+    void *addr;
+} mmap_item;
+
+
+unsigned mmap_hash_func (const struct hash_elem *element, void *aux);
+bool mmap_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 
 /*! A kernel thread or user process.
 
@@ -137,6 +150,9 @@ struct thread {
     /**@{*/
     struct list supl_page_tbl;          /*!< List of pages used by the
 					  process. */
+    int last_unused_mmap_id;
+    struct hash mmap_mappings;   /*!< Hashtable of file-memory
+                                          mappings. */
     /**@}*/
 #endif    
 

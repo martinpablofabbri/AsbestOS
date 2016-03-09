@@ -416,6 +416,12 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 
 #ifdef VM
     list_init(&t->supl_page_tbl);
+    t->last_unused_mmap_id = 4;
+    // Initialize mmap_mappings hash map
+    if (!hash_init(&t->mmap_mappings, mmap_hash_func, mmap_less_func, NULL)) {
+	// mmap hash table initialization failed
+	ASSERT(false);
+    }
 #endif
 
     old_level = intr_disable();
@@ -557,4 +563,15 @@ void init_child_info(struct child_info *child) {
     child->child_is_dead = false;
     lock_init(&child->child_lock);
     cond_init(&child->has_exited);
+}
+
+unsigned mmap_hash_func (const struct hash_elem *element, void *aux UNUSED) {
+    mmap_item *mi = hash_entry(element, mmap_item, elem);
+    return hash_int(mi->mapid);
+}
+
+bool mmap_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED) {
+    mmap_item *ma = hash_entry(a, mmap_item, elem);
+    mmap_item *mb = hash_entry(b, mmap_item, elem);
+    return ma->mapid < mb->mapid;
 }

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include <list.h>
+#include <debug.h>
 #include "devices/shutdown.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -33,6 +34,8 @@ static int sys_filesize(int fd);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
+static mapid_t sys_mmap (int fd, void *addr);
+static void sys_munmap (mapid_t mapid);
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -184,11 +187,11 @@ static void syscall_handler(struct intr_frame *f) {
         break;
     case SYS_MMAP:
 	// TODO(jg): Map a file into memory
-	*eax = SYSCALL_2(sys_mmap, int fd, void *addr);
+	*eax = SYSCALL_2(sys_mmap, int, void*);
 	break;
     case SYS_MUNMAP:
 	// TODO(jg): Unmap a file-memory mapping
-	SYSCALL_1(sys_munmap, mapid_t mapping);
+	SYSCALL_1(sys_munmap, mapid_t);
 	break;
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
@@ -428,8 +431,67 @@ static void sys_close(int fd) {
     free(fitem);
 }
 
+
+//// File memory mapping
+static bool mmap_overlap(struct file *file, void *addr) {
+    int len = file_length(file);
+    void *page_addr;
+    for (page_addr = addr; page_addr < addr + len; page_addr += PGSIZE) {
+	if (page_addr_is_mapped(page_addr))
+	    return true;
+    }
+    return false;
+}
+
 static mapid_t sys_mmap (int fd, void *addr) {
     // TODO(jg)
+    // Fail if addr is 0
+    if (addr == 0)
+	return -1;
+    // Fail if fd is 0 or 1 (not mapped because of stdin/stdout)
+    if (fd == 0 || fd == 1)
+	return -1;
+    // Fail if not page-aligned
+    if (addr != pg_round_down(addr))
+	return -1;
+
+    // Get the file from the fd
+    struct file_item *fitem = fileitem_from_fd(fd);
+    // Fail if fd is invalid
+    if (fitem == NULL) {
+        // No matching file descriptor. File possibly already closed.
+        return -1;
+    }
+
+    struct file *old_file;
+    old_file = fitem->file;
+    // Fail if file has a length of 0 bytes
+    if (file_length(old_file) == 0)
+	return -1;
+    // Fail if the range of pages mapped overlaps any existing mapped pages (incl stack, etc)
+    if (mmap_overlap(old_file, addr))
+	return -1;
+
+    // Get last unused mapid
+    struct thread *t = thread_current();
+    int new_mapid = t->last_unused_mmap_id++;
+    struct file* new_file = file_reopen(old_file);
+
+    // Make new mmap_item
+    mmap_item *mi = (mmap_item*) malloc(sizeof(mmap_item)); 
+    mi->mapid = new_mapid;
+    mi->file = new_file;
+    mi->addr = addr;
+
+    // TODO(jg): call function to map data pages to file
+    
+    // Add to thread's mappings
+    if (hash_insert(&t->mmap_mappings, &mi->elem)) {
+	// Item with same hash already in mapping
+	ASSERT(false);
+    }
+
+    return new_mapid;
 }
 
 static void sys_munmap (mapid_t mapping) {

@@ -38,6 +38,10 @@ struct spt_entry* page_add_user (void* upage) {
     return entry;
 }
 
+bool page_addr_is_mapped (const void *uaddr) {
+    return get_spt_entry(uaddr) == NULL;
+}
+
 /*! Attempt to recover from a page fault at the specified address.
   Returns true if recovery was successful. */
 bool page_fault_recover (const void* uaddr) {

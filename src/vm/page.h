@@ -39,7 +39,7 @@ struct spt_entry* page_add_user (void* upage);
 bool page_fault_recover (const void* uaddr);
 bool page_valid_addr (const void* uaddr, bool write);
 void page_extra_stack (const void* uaddr, void* esp);
-
+bool page_addr_is_mapped (const void *uaddr);
 // include "threads/pte.h"
 
 // TODO
