@@ -52,6 +52,7 @@ bool page_evict (struct spt_entry* entry);
 void page_kill_all (void);
 void page_in_and_pin (const void* uaddr, unsigned size);
 void page_unpin (const void* uaddr, unsigned size);
+bool page_addr_is_mapped (const void *uaddr);
 
 // include "threads/pte.h"
 

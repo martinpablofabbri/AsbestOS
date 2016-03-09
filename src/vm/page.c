@@ -43,6 +43,7 @@ struct spt_entry* page_add_user (void* upage) {
     return entry;
 }
 
+<<<<<<< HEAD
 /*! Maps a file into memory by creating several new user pages
     containing the file's data. Assumes that there are no conflicts
     with mapping the specified address and that the address is page
@@ -121,6 +122,10 @@ bool page_remove_file (const char* fname, void* upage) {
         upage += PGSIZE;
     }
     return true;    
+}
+
+bool page_addr_is_mapped (const void *uaddr) {
+    return get_spt_entry(uaddr) == NULL;
 }
 
 /*! Attempt to recover from a page fault at the specified address.
