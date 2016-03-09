@@ -141,6 +141,7 @@ int main(void) {
 
 #ifdef VM
     /* Initialize virtual memory. */
+    page_init();
     frame_init();
     swap_init();
 #endif

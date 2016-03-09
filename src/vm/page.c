@@ -15,9 +15,17 @@
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
+// TODO(keegan): Be smarter than a single global lock.
+static struct lock paging_lock;
+
 void init_spt_entry (struct spt_entry* entry);
 struct spt_entry* get_spt_entry (const void* uaddr);
 bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame);
+
+/*! Initialize the paging system. */
+void page_init (void) {
+    lock_init(&paging_lock);
+}
 
 /*! Adds a new user page at the given user virtual address.
     Returns the spt_entry if the operation was successful.
@@ -118,16 +126,21 @@ bool page_remove_file (const char* fname, void* upage) {
 /*! Attempt to recover from a page fault at the specified address.
   Returns true if recovery was successful. */
 bool page_fault_recover (const void* uaddr) {
+    lock_acquire(&paging_lock);
+
     struct spt_entry* entry = get_spt_entry(uaddr);
     if (entry == NULL) {
 	/* The given uaddr is not one of the current process's. */
+        lock_release(&paging_lock);
 	return false;
     }
 
     void* upage = (void*)((uintptr_t)uaddr & ~PGMASK);
     struct frame_entry* frame = frame_acquire();
-    if (frame == NULL)
+    if (frame == NULL) {
+        lock_release(&paging_lock);
 	return false;
+    }
     void* kpage = frame->kpage;
 
     // TODO(keegan): error handling?
@@ -137,9 +150,10 @@ bool page_fault_recover (const void* uaddr) {
     /* Map our page to the correct location. */
     if (!pagedir_set_page(t->pagedir, upage, kpage, entry->writable)) {
 	// TODO(keegan): frame_destroy?
+        lock_release(&paging_lock);
 	return false;
     }
-    
+    lock_release(&paging_lock);
     return true;
 }
 
@@ -158,6 +172,7 @@ void init_spt_entry (struct spt_entry* entry) {
     entry->upage = NULL;
     entry->file_ofs = 0;
     entry->frame = NULL;
+    entry->thread = thread_current();
 }
 
 /*! Return the spt_entry corresponding to a given userspace virtual
@@ -227,9 +242,13 @@ bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
   If adding the new page fails, the error will be caught later by the
   page fault handler. */
 void page_extra_stack (const void* uaddr, void* esp) {
+    lock_acquire(&paging_lock);
+
     struct spt_entry* entry = get_spt_entry(uaddr);
-    if (entry)
+    if (entry) {
+        lock_release(&paging_lock);
         return;
+    }
 
     uintptr_t u = (uintptr_t)uaddr;
     uintptr_t e = (uintptr_t)esp;
@@ -244,6 +263,9 @@ void page_extra_stack (const void* uaddr, void* esp) {
 	    ent->writable = true;
 	}
     }
+
+    lock_release(&paging_lock);
+
 }
 
 /*! Evicts the specified page. Returns true on success. */
@@ -255,11 +277,11 @@ bool page_evict (struct spt_entry* entry) {
         //entry->frame = NULL;
         return false;
     } else {
-        if (!swap_write(entry->upage, &entry->swap_info)) {
+        if (!swap_write(entry->frame->kpage, &entry->swap_info)) {
             return false;
         } else {
             // TODO(keegan): concurrency
-            pagedir_clear_page(thread_current()->pagedir, entry->upage);
+            pagedir_clear_page(entry->thread->pagedir, entry->upage);
             entry->frame = NULL;
             return true;
         }

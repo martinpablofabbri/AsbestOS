@@ -34,12 +34,14 @@ struct spt_entry {
     off_t file_ofs;                    /*!< Offset into the file. */
     size_t read_bytes;                 /*!< Number of bytes to
 					 read. */
-    bool writable;                    /*!< Is the page writable? */
+    bool writable;                     /*!< Is the page writable? */
     
-    swap_info_t swap_info;                  /*!< Where in swap is the data? */
-    struct frame_entry* frame;        /*!< Which frame the page is in. */
+    swap_info_t swap_info;             /*!< Where in swap is the data? */
+    struct frame_entry* frame;         /*!< Which frame the page is in. */
+    struct thread* thread;             /*!< Thread which owns the page. */
 };
 
+void page_init (void);
 struct spt_entry* page_add_user (void* upage);
 bool page_add_file (const char* fname, void* upage);
 bool page_remove_file (const char* fname, void* upage);
