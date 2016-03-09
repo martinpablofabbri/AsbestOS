@@ -220,6 +220,7 @@ bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
 	    file_close(f);
 	} else if (entry->src == SPT_SRC_FILE) {
             //TODO(keegan)
+	    // TODO(jg): bring data from file onto the page
 	} else {
 	    ASSERT(false);
 	}
