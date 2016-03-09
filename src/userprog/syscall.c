@@ -36,6 +36,7 @@ static unsigned sys_tell (int fd);
 static void sys_close(int fd);
 static mapid_t sys_mmap (int fd, void *addr);
 static void sys_munmap (mapid_t mapid);
+static void munmap_all_on_exit (void);
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -186,11 +187,9 @@ static void syscall_handler(struct intr_frame *f) {
         *eax = SYSCALL_1(sys_tell, int);
         break;
     case SYS_MMAP:
-	// TODO(jg): Map a file into memory
 	*eax = SYSCALL_2(sys_mmap, int, void*);
 	break;
     case SYS_MUNMAP:
-	// TODO(jg): Unmap a file-memory mapping
 	SYSCALL_1(sys_munmap, mapid_t);
 	break;
     default:
@@ -217,6 +216,8 @@ void sys_exit (int status) {
 	file_close(fitem->file);
 	free(fitem);
     }
+    // Unmap all file-memory
+    munmap_all_on_exit ();
 
     printf("%s: exit(%d)\n", thread_name(), status);
     thread_current()->retval = status;
@@ -446,7 +447,6 @@ static bool mmap_overlap(struct file *file, void *addr) {
 }
 
 static mapid_t sys_mmap (int fd, void *addr) {
-    // TODO(jg)
     // Fail if addr is 0
     if (addr == 0)
 	return -1;
@@ -496,6 +496,28 @@ static mapid_t sys_mmap (int fd, void *addr) {
     return new_mapid;
 }
 
+static void hash_munmap (struct hash_elem *element, void *aux UNUSED) {
+    mmap_item *mi = hash_entry(element, mmap_item, elem);
+    // TODO(jg): Unmap the pages
+
+    file_close(mi->file);
+    free(mi);
+}
+
 static void sys_munmap (mapid_t mapping) {
-    // TODO(jg)
+    // Get the mmap_item
+    mmap_item mi;
+    mi.mapid = mapping;
+    struct thread *t = thread_current();
+    struct hash_elem *helem = hash_delete(&t->mmap_mappings, &mi.elem);
+    if (helem) {
+	hash_munmap(helem, NULL);
+    } else {
+	// TODO(jg) munmap failed, figure out what to do
+	ASSERT(false);
+    }
+}
+
+static void munmap_all_on_exit () {
+    hash_destroy(&thread_current()->mmap_mappings, hash_munmap);
 }
