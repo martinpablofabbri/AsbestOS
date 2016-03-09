@@ -86,6 +86,36 @@ bool page_add_file (const char* fname, void* upage) {
     return true;    
 }
 
+/*! Unmaps a given file from memory. Assumes that the file given by
+  fname is currently mapped, starting at upage. Returns true on
+  success. */
+bool page_remove_file (const char* fname, void* upage) {
+    ASSERT(pg_ofs(upage) == 0);
+
+    struct file* file = filesys_open(fname);
+    if (!file)
+        return false;
+
+    int size = file_length(file);
+    file_close(file);
+
+    if (size == 0)
+        return false;
+
+    while (size > 0) {
+	struct spt_entry* entry = get_spt_entry (upage);
+        //TODO(keegan): on failure, do something
+	if (entry == NULL)
+	    return false;
+
+        //TODO(keegan): Evict and remove from spt.
+
+        /* Advance. */
+        size -= PGSIZE;
+        upage += PGSIZE;
+    }
+    return true;    
+}
 
 /*! Attempt to recover from a page fault at the specified address.
   Returns true if recovery was successful. */
