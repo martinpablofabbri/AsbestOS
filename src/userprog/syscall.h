@@ -4,5 +4,7 @@
 void syscall_init(void);
 void sys_exit (int status);
 
+typedef int mapid_t;
+
 #endif /* userprog/syscall.h */
 

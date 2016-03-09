@@ -123,6 +123,7 @@ bool retrieve_page (struct spt_entry* entry, void* kpage) {
 	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
 	    file_close(f);
 	} else if (entry->src == SPT_SRC_FILE) {
+	    // TODO(jg): bring data from file onto the page
 
 	} else {
 	    ASSERT(false);

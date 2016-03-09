@@ -182,7 +182,14 @@ static void syscall_handler(struct intr_frame *f) {
     case SYS_TELL:
         *eax = SYSCALL_1(sys_tell, int);
         break;
-
+    case SYS_MMAP:
+	// TODO(jg): Map a file into memory
+	*eax = SYSCALL_2(sys_mmap, int fd, void *addr);
+	break;
+    case SYS_MUNMAP:
+	// TODO(jg): Unmap a file-memory mapping
+	SYSCALL_1(sys_munmap, mapid_t mapping);
+	break;
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
     }
@@ -419,4 +426,12 @@ static void sys_close(int fd) {
     // remove file_item from opened files list and free
     list_remove(&fitem->elem);
     free(fitem);
+}
+
+static mapid_t sys_mmap (int fd, void *addr) {
+    // TODO(jg)
+}
+
+static void sys_munmap (mapid_t mapping) {
+    // TODO(jg)
 }
