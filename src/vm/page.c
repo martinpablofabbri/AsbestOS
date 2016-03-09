@@ -214,7 +214,7 @@ bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
             //TODO(keegan)
         } else {
             /* The data is in swap. */
-            //swap_read(kpage, entry->swap_info);
+            swap_read(kpage, entry->swap_info);
         }
     }
     frame->spt = entry;
@@ -255,10 +255,14 @@ bool page_evict (struct spt_entry* entry) {
         //entry->frame = NULL;
         return false;
     } else {
-        //TODO(keegan): write out to swap
-        //entry->swap_info = swap_write(entry->upage);
-        //entry->frame = NULL;
-        return false;
+        if (!swap_write(entry->upage, &entry->swap_info)) {
+            return false;
+        } else {
+            // TODO(keegan): concurrency
+            pagedir_clear_page(thread_current()->pagedir, entry->upage);
+            entry->frame = NULL;
+            return true;
+        }
     }
 }
 

@@ -142,6 +142,7 @@ int main(void) {
 #ifdef VM
     /* Initialize virtual memory. */
     frame_init();
+    swap_init();
 #endif
 
     printf("Boot complete.\n");

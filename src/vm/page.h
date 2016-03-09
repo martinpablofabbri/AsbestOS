@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include "vm/frame.h"
+#include "vm/swap.h"
 #include "filesys/off_t.h"
 #include "filesys/directory.h"
 
@@ -35,7 +36,7 @@ struct spt_entry {
 					 read. */
     bool writable;                    /*!< Is the page writable? */
     
-    void* swap_info;                  /*!< Where in swap is the data? */
+    swap_info_t swap_info;                  /*!< Where in swap is the data? */
     struct frame_entry* frame;        /*!< Which frame the page is in. */
 };
 
