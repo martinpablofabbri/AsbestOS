@@ -6,9 +6,6 @@
 #include "threads/synch.h"
 #include "filesys/filesys.h"
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-
 #define SECS_IN_PAGE (PGSIZE / BLOCK_SECTOR_SIZE)
 
 struct block *swap_device;
@@ -72,5 +69,3 @@ swap_info_t get_free_block(void) {
     }
     PANIC("No free swap blocks");
 }
-
-#pragma GCC pop_options

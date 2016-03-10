@@ -12,9 +12,6 @@
 /*! Maximum stack size is 8MB. */
 #define MAX_STACK_SIZE 0x800000
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-
 // TODO(keegan): Be smarter than a single global lock.
 static struct lock paging_lock;
 
@@ -336,5 +333,3 @@ void page_in_and_pin (const void* uaddr, unsigned size) {
 void page_unpin (const void* uaddr, unsigned size) {
     // TODO: Also unpin
 }
-
-#pragma GCC pop_options
