@@ -8,17 +8,18 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Keegan    Ryan      karyan@caltech.edu
+Jalen     Green     jpgreen@caltech.edu
+Martin    Fabbri    mfabbri@caltech.edu
 
 >> Specify how many late tokens you are using on this assignment:  
+7
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/keeganryan/AsbestOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -38,9 +39,15 @@ which parts.
 
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
+   Keegan - 20
+   Jalen - 10
+   Martin - 6
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+   Jalen - MMAP system calls.
+   Keegan - Paging
+   Martin - Swap
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -54,25 +61,102 @@ not required by the question.
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+// In struct thread:
+    void* user_esp;                     /*!< When the program is
+                                           executing, the stack
+                                           pointer of the user
+                                           program. */
+    /*! Owned by vm/page.c. */
+    /**@{*/
+    struct list supl_page_tbl;          /*!< List of pages used by the
+                                         process. */
+    int last_unused_mmap_id;
+    struct list mmap_mappings;
+    /**@}*/
+
+// In frame.c:
+static struct list all_frames;          /*!< Global list of all frames. */
+
+// In frame.h:
+/*! Represent a page of physical memory from the user pool.
+ */
+struct frame_entry {
+    struct list_elem elem;           /*!< List element. */
+    void *kpage;                     /*!< Kernel virtual address of the frame. */
+    struct spt_entry* spt;           /*!< Pointer to the spt_entry of
+                                       the page occupying the frame. */
+};
+
+// In page.c:
+static struct lock paging_lock;         /*!< Global paging lock. */
+
+// In page.h:
+/*! Possible sources of data for a supplemental page table entry. */
+enum spt_source {
+    SPT_SRC_FILE,                      /*!< The data is mapped from a
+                                        file. */
+    SPT_SRC_EXEC,                      /*!< The data comes from the
+                                        executable. */
+    SPT_SRC_ZERO                       /*!< The data is all zeros. */
+};
+
+/*! Represent a page of memory owned by the current user process.
+ */
+struct spt_entry {
+    void* upage;                       /*!< Address of the user
+                                        virtual page represented by
+                                        this entry. */
+    struct list_elem elem;             /*!< List element. */
+    bool created;                      /*!< Has the page been created
+                                        yet? */
+    enum spt_source src;               /*!< What is the source of the
+                                        data? */
+    char filename[NAME_MAX+1];         /*!< Filename of the data
+                                        source. */
+    off_t file_ofs;                    /*!< Offset into the file. */
+    size_t read_bytes;                 /*!< Number of bytes to
+                                        read. */
+    bool writable;                     /*!< Is the page writable? */
+    
+    swap_info_t swap_info;             /*!< Where in swap is the data? */
+    struct frame_entry* frame;         /*!< Which frame the page is in. */
+    struct thread* thread;             /*!< Thread which owns the page. */
+    struct file* mmap_file;            /*!< File pointer for mmapped file. */
+};
+
 
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
 >> if any, that contains the data of a given page.
+Each thread has a list of "spt_entry" objects for every userspace page
+the process should have access to. The given spt_entry for a userspace
+address can be found using get_spt_entry(). This object has a "frame"
+field that is updated whenever the page is placed in a frame or paged
+out of a frame. If the page is in a frame, the frame field is
+non-null.
+
+The frame object contains the kernel virtual address of the data.
 
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
+We don't.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
+A global paging_lock that is acquired whenever paging operations occur.
 
 ---- RATIONALE ----
 
 >> A5: Why did you choose the data structure(s) that you did for
 >> representing virtual-to-physical mappings?
+It makes sense to do per-process supplemental page tables since the
+same userspace address can be mapped to multiple processes. We chose a
+global frame table since physical memory should be accessible by all
+processes.
 
 		       PAGING TO AND FROM DISK
 		       =======================
@@ -83,18 +167,40 @@ not required by the question.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+static struct lock fs_lock;         /* Move the filesystem lock to filesys.c */
+
+// In swap.c
+struct block *swap_device;          /* Swap block device. */
+bool* free_swap;                    /* Array to indicate when a swap slot
+                                      is free. */
+
+// In swap.h
+typedef uint32_t swap_info_t;       /* Information that is used to index into
+                                      the swap table. */
+
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
+We pop off the head of the list of frames and evict that one.
 
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
+The frame has a reference to Q's spt_entry. When P needs the frame,
+Q's page is evicted by P, and the mapping is removed from Q's page
+table. Then the frame can now be filled with P's data, so it is.
+Then P's page table is updated, as well as its supplemental page table.
 
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+We first get the last userspace stack pointer before transitioning
+into kernel mode. We ensure that the fault address is below PHYS_BASE
+and above the minimum stack address. Finally we check that the stack
+pointer (minus 32 bytes) is below the faulting address, which accounts
+for operations that fault because we tried to push 32 bytes to the
+stack.
 
 ---- SYNCHRONIZATION ----
 
@@ -102,22 +208,30 @@ not required by the question.
 >> particular, explain how it prevents deadlock.  (Refer to the
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
+We have a single global lock around paging operations. No paging
+operations should ever fault on a userspace address, so a thread
+should never try to acquire the lock twice.
 
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
+Global lock.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
+Global lock.
 
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
 >> in user programs), or do you have a mechanism for "locking" frames
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
+We check that user pointers fall within some page before trying to
+dereference them. If the page is paged out when accessed, we page it
+in.
 
 ---- RATIONALE ----
 
@@ -126,6 +240,8 @@ not required by the question.
 >> complicates synchronization and raises the possibility for deadlock
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
+We used a single lock because it was all we were able to do before
+submitting.
 
 			 MEMORY MAPPED FILES
 			 ===================
@@ -136,14 +252,35 @@ not required by the question.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+typedef struct _mmapitem {
+    //struct hash_elem elem;
+    struct list_elem elem;
+    mapid_t mapid;
+    struct file *file;
+    void *addr;
+} mmap_item;
+
+typedef int mapid_t;
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how memory mapped files integrate into your virtual
 >> memory subsystem.  Explain how the page fault and eviction
 >> processes differ between swap pages and other pages.
+Each spt_entry keeps track of the source of the page data, whether
+it be the executable file, a mapped file, or other. When evicting
+a page, mapped files should be evicted to the file. All others are
+evicted to swap. When paging in, we check to see if that data has
+ever been paged in before (using the "created" field). If it has not
+been paged in, executable files and mapped files are brought in from
+the file. Other pages are zeroed out. If the page has been paged in
+before, it is read from the file for mapped files and read from
+swap otherwise.
 
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
+We iterate over all userspace pages that would be spanned by the file
+and see if any are in the Supplemental Page Table.
 
 ---- RATIONALE ----
 
@@ -153,6 +290,9 @@ not required by the question.
 >> that much of their implementation can be shared.  Explain why your
 >> implementation either does or does not share much of the code for
 >> the two situations.
+It does, because the only difference is where the page is brought in
+from and where it is paged to. Frames and supplemental page table
+management don't care about the difference.
 
 			   SURVEY QUESTIONS
 			   ================
