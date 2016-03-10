@@ -93,15 +93,13 @@ bool page_add_file (struct file* file, void* upage) {
 /*! Unmaps a given file from memory. Assumes that the file given by
   fname is currently mapped, starting at upage. Returns true on
   success. */
-bool page_remove_file (const char* fname, void* upage) {
+bool page_remove_file (struct file* file, void* upage) {
     ASSERT(pg_ofs(upage) == 0);
 
-    struct file* file = filesys_open(fname);
     if (!file)
         return false;
 
     int size = file_length(file);
-    file_close(file);
 
     if (size == 0)
         return false;
@@ -112,7 +110,10 @@ bool page_remove_file (const char* fname, void* upage) {
 	if (entry == NULL)
 	    return false;
 
-        //TODO(keegan): Evict and remove from spt.
+        /* Evict and remove from spt. */
+        if (entry->frame)
+            page_evict(entry);
+        list_remove(&entry->elem);
 
         /* Advance. */
         size -= PGSIZE;
@@ -279,9 +280,15 @@ bool page_evict (struct spt_entry* entry) {
     ASSERT(entry != NULL);
     // TODO(keegan): check to see if we need to evict a page
     if (entry->src == SPT_SRC_FILE) {
-        //TODO(keegan): write out to file
-        //entry->frame = NULL;
-        return false;
+        if (pagedir_is_dirty(entry->thread->pagedir,
+                             entry->upage)) {
+            file_seek(entry->mmap_file, entry->file_ofs);
+            file_write(entry->mmap_file,
+                       entry->frame->kpage,
+                       entry->read_bytes);
+        }
+        entry->frame = NULL;
+        return true;
     } else {
         if (!swap_write(entry->frame->kpage, &entry->swap_info)) {
             return false;

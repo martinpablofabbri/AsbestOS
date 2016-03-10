@@ -487,7 +487,6 @@ static mapid_t sys_mmap (int fd, void *addr) {
     mi->file = new_file;
     mi->addr = addr;
 
-    // TODO(jg): call function to map data pages to file
     page_add_file(mi->file, mi->addr);
     
     // Add to thread's mappings
@@ -531,6 +530,7 @@ static void sys_munmap (mapid_t mapping) {
 	mmap_item *elem_item = list_entry(e, mmap_item, elem); 
 	if (elem_item->mapid == mapping) {
 	    // TODO(jg): unmap and return
+            page_remove_file(elem_item->file, elem_item->addr);
 	    file_close(elem_item->file);
 	    list_remove(e);
 	    free(elem_item);
@@ -552,6 +552,7 @@ static void munmap_all_on_exit() {
 	e = list_pop_back(&t->mmap_mappings);
 	mmap_item *elem_item = list_entry(e, mmap_item, elem); 
 	// TODO(jg): unmap and return
+        page_remove_file(elem_item->file, elem_item->addr);
 	file_close(elem_item->file);
 	list_remove(e);
 	free(elem_item);
