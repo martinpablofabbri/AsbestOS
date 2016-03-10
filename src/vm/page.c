@@ -314,8 +314,6 @@ void page_kill_all (void) {
             ASSERT(ent->frame->kpage != NULL);
             // TODO(keegan): Concurrency
             list_remove(&ent->frame->elem);
-            // TODO(keegan): Unmap page
-            //palloc_free_page(ent->frame->kpage);
             free(ent->frame);
         }
         free(ent);

@@ -437,8 +437,6 @@ static void sys_close(int fd) {
 
 //// File memory mapping
 static bool mmap_overlap(struct file *file, void *addr) {
-    //TODO(keegan): change
-    return false;
     int len = file_length(file);
     void *page_addr;
     for (page_addr = addr; page_addr < addr + len; page_addr += PGSIZE) {
