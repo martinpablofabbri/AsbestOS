@@ -281,7 +281,9 @@ static int sys_read (int fd, void *buffer, unsigned size) {
         // no matching file descriptor
     }
     file = fitem->file;
+    page_in_and_pin(buffer, size);
     bytes_read = file_read(file, buffer, size);
+    page_unpin(buffer, size);
 
     return bytes_read;
 

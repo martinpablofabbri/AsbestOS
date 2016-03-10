@@ -50,6 +50,8 @@ bool page_valid_addr (const void* uaddr, bool write);
 void page_extra_stack (const void* uaddr, void* esp);
 bool page_evict (struct spt_entry* entry);
 void page_kill_all (void);
+void page_in_and_pin (const void* uaddr, unsigned size);
+void page_unpin (const void* uaddr, unsigned size);
 
 // include "threads/pte.h"
 

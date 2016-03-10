@@ -4,6 +4,8 @@
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "filesys/filesys.h"
+
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
@@ -11,7 +13,7 @@
 
 struct block *swap_device;
 //TODO(keegan): Use a better method than this.
-#define SWAP_COUNT (8192 / 4)
+#define SWAP_COUNT 8192
 bool* free_swap;
 
 swap_info_t get_free_block(void);
@@ -30,6 +32,7 @@ void swap_init(void) {
 
 /*! Read a block from swap, specified by info. */
 void swap_read(void* kpage, swap_info_t info) {
+    filesys_lock();
     int i;
     block_sector_t sector = SECS_IN_PAGE * (uint32_t)info;
     for (i = 0; i < SECS_IN_PAGE; i++) {
@@ -38,12 +41,14 @@ void swap_read(void* kpage, swap_info_t info) {
                    (uint8_t*)kpage + i*BLOCK_SECTOR_SIZE);
     }
     free_swap[info] = true;
+    filesys_unlock();
 }
 
 /*! Write a page into swap. If successful, sets info to the swap_info
   related to the location of the written page. Returns true on
   success. */
 bool swap_write(void* kpage, swap_info_t* info) {
+    filesys_lock();
     int i;
     swap_info_t swap_info = get_free_block();
     block_sector_t sector = swap_info * SECS_IN_PAGE;
@@ -54,6 +59,7 @@ bool swap_write(void* kpage, swap_info_t* info) {
     }
     *info = swap_info;
     free_swap[swap_info] = false;
+    filesys_unlock();
     return true;
 }
 

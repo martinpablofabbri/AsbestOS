@@ -309,4 +309,21 @@ void page_kill_all (void) {
     }
 }
 
+/*! Ensure that a certain buffer is entirely paged in, and won't be
+  paged out until the buffer is unpinned. */
+void page_in_and_pin (const void* uaddr, unsigned size) {
+    uint8_t* buf = (uint8_t*)((uintptr_t)uaddr & ~PGMASK);
+    while (buf < (uint8_t*)uaddr + size) {
+        //TODO: Also pin somehow
+        if (get_spt_entry(buf)->frame == NULL)
+            page_fault_recover((const void*)buf);
+        buf += PGSIZE;
+    }
+}
+
+/*! Unpin all the pages spanned by a given buffer. */
+void page_unpin (const void* uaddr, unsigned size) {
+    // TODO: Also unpin
+}
+
 #pragma GCC pop_options
