@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include <hash.h>
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -418,10 +419,20 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->supl_page_tbl);
     t->last_unused_mmap_id = 4;
     // Initialize mmap_mappings hash map
+    // TODO(jg) remove
+    /* printf("Entering hash_init...\n"); */
+    /* bool hash_init_success = hash_init(&t->mmap_mappings, mmap_hash_func, mmap_less_func, NULL); */
+    /* printf("Exited hash_init. \n"); */
+
+    list_init(&t->mmap_mappings);
+
+    // TODO(jg) remove
+    /*
     if (!hash_init(&t->mmap_mappings, mmap_hash_func, mmap_less_func, NULL)) {
 	// mmap hash table initialization failed
 	ASSERT(false);
     }
+    */
 #endif
 
     old_level = intr_disable();
@@ -565,13 +576,14 @@ void init_child_info(struct child_info *child) {
     cond_init(&child->has_exited);
 }
 
-unsigned mmap_hash_func (const struct hash_elem *element, void *aux UNUSED) {
-    mmap_item *mi = hash_entry(element, mmap_item, elem);
-    return hash_int(mi->mapid);
-}
+// TODO(jg) remove if not using hash table for mmap
+/* unsigned mmap_hash_func (const struct hash_elem *element, void *aux UNUSED) { */
+/*     mmap_item *mi = hash_entry(element, mmap_item, elem); */
+/*     return hash_int(mi->mapid); */
+/* } */
 
-bool mmap_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED) {
-    mmap_item *ma = hash_entry(a, mmap_item, elem);
-    mmap_item *mb = hash_entry(b, mmap_item, elem);
-    return ma->mapid < mb->mapid;
-}
+/* bool mmap_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED) { */
+/*     mmap_item *ma = hash_entry(a, mmap_item, elem); */
+/*     mmap_item *mb = hash_entry(b, mmap_item, elem); */
+/*     return ma->mapid < mb->mapid; */
+/* } */
