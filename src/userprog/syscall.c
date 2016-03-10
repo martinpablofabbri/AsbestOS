@@ -437,6 +437,8 @@ static void sys_close(int fd) {
 
 //// File memory mapping
 static bool mmap_overlap(struct file *file, void *addr) {
+    //TODO(keegan): change
+    return false;
     int len = file_length(file);
     void *page_addr;
     for (page_addr = addr; page_addr < addr + len; page_addr += PGSIZE) {
@@ -486,6 +488,7 @@ static mapid_t sys_mmap (int fd, void *addr) {
     mi->addr = addr;
 
     // TODO(jg): call function to map data pages to file
+    page_add_file(mi->file, mi->addr);
     
     // Add to thread's mappings
     // TODO(jg): remove if not using hash for mmap

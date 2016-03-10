@@ -43,20 +43,17 @@ struct spt_entry* page_add_user (void* upage) {
     return entry;
 }
 
-<<<<<<< HEAD
 /*! Maps a file into memory by creating several new user pages
     containing the file's data. Assumes that there are no conflicts
     with mapping the specified address and that the address is page
     aligned. Returns true on success. */
-bool page_add_file (const char* fname, void* upage) {
+bool page_add_file (struct file* file, void* upage) {
     ASSERT(pg_ofs(upage) == 0);
 
-    struct file* file = filesys_open(fname);
     if (!file)
         return false;
 
     off_t size = file_length(file);
-    file_close(file);
 
     if (size == 0)
         return false;
@@ -79,7 +76,7 @@ bool page_add_file (const char* fname, void* upage) {
 	    return false;
 
 	entry->src = SPT_SRC_FILE;
-	strlcpy(entry->filename, fname, NAME_MAX + 1);
+        entry->mmap_file = file;
 	entry->file_ofs = ofs;
 	entry->read_bytes = page_read_bytes;
 	entry->writable = true;
@@ -125,7 +122,7 @@ bool page_remove_file (const char* fname, void* upage) {
 }
 
 bool page_addr_is_mapped (const void *uaddr) {
-    return get_spt_entry(uaddr) == NULL;
+    return get_spt_entry(uaddr) != NULL;
 }
 
 /*! Attempt to recover from a page fault at the specified address.
@@ -224,15 +221,18 @@ bool retrieve_page (struct spt_entry* entry, struct frame_entry* frame) {
 	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
 	    file_close(f);
 	} else if (entry->src == SPT_SRC_FILE) {
-            //TODO(keegan)
-	    // TODO(jg): bring data from file onto the page
+            file_seek(entry->mmap_file, entry->file_ofs);
+            file_read(entry->mmap_file, kpage, entry->read_bytes);
+	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
 	} else {
 	    ASSERT(false);
 	}
 	entry->created = true;
     } else {
         if (entry->src == SPT_SRC_FILE) {
-            //TODO(keegan)
+            file_seek(entry->mmap_file, entry->file_ofs);
+            file_read(entry->mmap_file, kpage, entry->read_bytes);
+	    memset(kpage + entry->read_bytes, 0, PGSIZE - entry->read_bytes);
         } else {
             /* The data is in swap. */
             swap_read(kpage, entry->swap_info);

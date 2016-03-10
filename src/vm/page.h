@@ -39,11 +39,12 @@ struct spt_entry {
     swap_info_t swap_info;             /*!< Where in swap is the data? */
     struct frame_entry* frame;         /*!< Which frame the page is in. */
     struct thread* thread;             /*!< Thread which owns the page. */
+    struct file* mmap_file;            /*!< File pointer for mmapped file. */
 };
 
 void page_init (void);
 struct spt_entry* page_add_user (void* upage);
-bool page_add_file (const char* fname, void* upage);
+bool page_add_file (struct file* file, void* upage);
 bool page_remove_file (const char* fname, void* upage);
 bool page_fault_recover (const void* uaddr);
 bool page_valid_addr (const void* uaddr, bool write);
