@@ -488,36 +488,69 @@ static mapid_t sys_mmap (int fd, void *addr) {
     // TODO(jg): call function to map data pages to file
     
     // Add to thread's mappings
+    // TODO(jg): remove if not using hash for mmap
+    /*
     if (hash_insert(&t->mmap_mappings, &mi->elem)) {
 	// Item with same hash already in mapping
 	ASSERT(false);
     }
+    */
+    list_push_back(&t->mmap_mappings, &mi->elem);
 
     return new_mapid;
 }
 
-static void hash_munmap (struct hash_elem *element, void *aux UNUSED) {
-    mmap_item *mi = hash_entry(element, mmap_item, elem);
-    // TODO(jg): Unmap the pages
-
-    file_close(mi->file);
-    free(mi);
-}
+// TODO(jg): remove if not using hash
+/* static void hash_munmap (struct hash_elem *element, void *aux UNUSED) { */
+/*     mmap_item *mi = hash_entry(element, mmap_item, elem); */
+/*     // TODO(jg): Unmap the pages */
+/*     file_close(mi->file); */
+/*     free(mi); */
+/* } */
 
 static void sys_munmap (mapid_t mapping) {
     // Get the mmap_item
-    mmap_item mi;
-    mi.mapid = mapping;
     struct thread *t = thread_current();
-    struct hash_elem *helem = hash_delete(&t->mmap_mappings, &mi.elem);
-    if (helem) {
-	hash_munmap(helem, NULL);
-    } else {
-	// TODO(jg) munmap failed, figure out what to do
-	ASSERT(false);
+    // TODO(jg): remove if not using hash for mmap
+    /* mmap_item mi; */
+    /* mi.mapid = mapping; */
+    /* struct hash_elem *helem = hash_delete(&t->mmap_mappings, &mi.elem); */
+    /* if (helem) { */
+    /* 	hash_munmap(helem, NULL); */
+    /* } else { */
+    /* 	// TODO(jg) munmap failed, figure out what to do */
+    /* 	ASSERT(false); */
+    /* } */
+    struct list_elem *e;
+    for (e = list_begin(&t->mmap_mappings);
+	 e != list_end(&t->mmap_mappings);
+	 e = list_next(e)) {
+	mmap_item *elem_item = list_entry(e, mmap_item, elem); 
+	if (elem_item->mapid == mapping) {
+	    // TODO(jg): unmap and return
+	    file_close(elem_item->file);
+	    list_remove(e);
+	    free(elem_item);
+	    return;
+	}
     }
+    // Did not find the mapping
+    ASSERT(false);
 }
 
-static void munmap_all_on_exit () {
-    hash_destroy(&thread_current()->mmap_mappings, hash_munmap);
+// TODO(jg): remove if not using hash
+/* static void munmap_all_on_exit () { */
+/*     hash_destroy(&thread_current()->mmap_mappings, hash_munmap); */
+/* } */
+static void munmap_all_on_exit() {
+    struct thread *t = thread_current();
+    struct list_elem *e;
+    while (!list_empty(&t->mmap_mappings)) {
+	e = list_pop_back(&t->mmap_mappings);
+	mmap_item *elem_item = list_entry(e, mmap_item, elem); 
+	// TODO(jg): unmap and return
+	file_close(elem_item->file);
+	list_remove(e);
+	free(elem_item);
+    }
 }
