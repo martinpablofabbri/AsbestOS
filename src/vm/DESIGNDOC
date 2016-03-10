@@ -70,8 +70,9 @@ not required by the question.
     /**@{*/
     struct list supl_page_tbl;          /*!< List of pages used by the
                                          process. */
-    int last_unused_mmap_id;
-    struct list mmap_mappings;
+    int last_unused_mmap_id;            /*!< Used to track unused mapids */
+    struct list mmap_mappings;          /*!< List of file-memory mappings
+                                          Includes mapid and address */
     /**@}*/
 
 // In frame.c:
@@ -252,14 +253,15 @@ submitting.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/** Hold mmap mapping information **/
 typedef struct _mmapitem {
-    //struct hash_elem elem;
-    struct list_elem elem;
-    mapid_t mapid;
-    struct file *file;
-    void *addr;
+    struct list_elem elem; /* list element */
+    mapid_t mapid;         /* mapid of corresponding map */
+    struct file *file;     /* File being mapped */
+    void *addr;            /* User virtual address of mapping */
 } mmap_item;
 
+/** Typedef for mmap syscall mapping id **/
 typedef int mapid_t;
 
 ---- ALGORITHMS ----
