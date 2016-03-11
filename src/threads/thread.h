@@ -42,10 +42,6 @@ typedef struct _mmapitem {
 } mmap_item;
 
 
-// TODO(jg): remove if not using hash for mmap
-/* unsigned mmap_hash_func (const struct hash_elem *element, void *aux); */
-/* bool mmap_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux); */
-
 /*! A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The

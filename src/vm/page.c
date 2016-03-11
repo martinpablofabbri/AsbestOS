@@ -119,6 +119,7 @@ bool page_remove_file (struct file* file, void* upage) {
     return true;    
 }
 
+/** Check if a page is already in use **/
 bool page_addr_is_mapped (const void *uaddr) {
     return get_spt_entry(uaddr) != NULL;
 }
