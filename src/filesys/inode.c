@@ -9,15 +9,49 @@
 
 /*! Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
+#define NUM_DIRECT 124
+#define NUM_INDIRECT 1
+#define NUM_DOUBLE_INDIRECT 1
 
 /*! On-disk inode.
     Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk {
+    // Metadata
     block_sector_t start;               /*!< First data sector. */
     off_t length;                       /*!< File size in bytes. */
-    unsigned magic;                     /*!< Magic number. */
-    uint32_t unused[125];               /*!< Not used. */
+    // Sector pointers
+    block_sector_t direct[NUM_DIRECT];
+    block_sector_t *indirect[NUM_INDIRECT];
+    block_sector_t **double_indirect[NUM_DOUBLE_INDIRECT];
+
+    
+    // TODO(jg): remove
+    /* unsigned magic;                     /\*!< Magic number. *\/ */
+    /* uint32_t unused[125];               /\*!< Not used. *\/ */
 };
+
+/*! Get the block sector given the offset and an inode_disk */
+static block_sector_t off2block_sector (off_t offset, const struct inode_disk *inode_disk_) {
+    int block_idx = offset / BLOCK_SECTOR_SIZE;
+    // Direct block sector
+    if (block_idx < NUM_DIRECT) {
+	return inode_disk_->direct[block_idx];
+    }
+
+    // Single indirect
+    // TODO(jg): remove magic number 128
+    if (block_idx < NUM_DIRECT + NUM_INDIRECT * 128) {
+	int block_idx_modified = block_idx - NUM_DIRECT;
+	int indirect_idx = (block_idx_modified) / 128;
+	return inode_disk_->indirect[indirect_idx][block_idx_modified];
+    }
+
+    // Double indirect required
+    int block_idx_modified = (block_idx - NUM_DIRECT) - NUM_INDIRECT * 128;
+    int indirect_idx = (block_idx_modified) / 128;
+    int double_indirect_idx = block_idx_modified / (128*128);
+    return inode_disk_->double_indirect[double_indirect_idx][indirect_idx][block_idx_modified];
+}
 
 /*! Returns the number of sectors to allocate for an inode SIZE
     bytes long. */
@@ -75,7 +109,8 @@ bool inode_create(block_sector_t sector, off_t length) {
     if (disk_inode != NULL) {
         size_t sectors = bytes_to_sectors(length);
         disk_inode->length = length;
-        disk_inode->magic = INODE_MAGIC;
+	// TODO(jg): remove
+        /* disk_inode->magic = INODE_MAGIC; */
         if (free_map_allocate(sectors, &disk_inode->start)) {
             block_write(fs_device, sector, disk_inode);
             if (sectors > 0) {
