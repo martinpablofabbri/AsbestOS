@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <stdio.h>
 #include <string.h>
+#include "threads/thread.h"
 #include "filesys/file.h"
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
@@ -41,27 +42,93 @@ void filesys_done(void) {
     or if internal memory allocation fails. */
 bool filesys_create(const char *name, off_t initial_size) {
     block_sector_t inode_sector = 0;
-    struct dir *dir = dir_open_root();
+
+    struct dir *dir = thread_current()->pwd;
+    char * file;
+    if (!dir_parse((char*)name, &dir, &file))
+        return false;
+    // Used to ensure the directory is still alive
+    struct inode* inode;
+    dir_lookup(dir, ".", &inode);
+    if (inode == NULL)
+        return false;
+
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
-                    inode_create(inode_sector, initial_size) &&
-                    dir_add(dir, name, inode_sector));
+                    inode_create(inode_sector, initial_size, false) &&
+                    dir_add(dir, file, inode_sector));
     if (!success && inode_sector != 0) 
         free_map_release(inode_sector, 1);
-    dir_close(dir);
 
     return success;
+}
+
+/*! Creates a directory at the path specified by NAME with the
+    specified number of directory entries. Fails if a file named NAME
+    already exists, or if internal memory allocation fails. */
+bool filesys_create_dir(char* name, size_t entry_cnt) {
+    block_sector_t inode_sector = 0;
+
+    struct dir *dir = thread_current()->pwd;
+    char * file;
+    if (!dir_parse(name, &dir, &file))
+        return false;
+
+    bool success = (dir != NULL &&
+                    free_map_allocate(1, &inode_sector) &&
+                    dir_create(inode_sector, entry_cnt) &&
+                    dir_add(dir, file, inode_sector));
+
+    if (success) {
+        struct dir* dir2 = dir_open(inode_open(inode_sector));
+        dir_add(dir2, "..", inode_get_inumber(dir_get_inode(dir)));
+        dir_close(dir2);
+    }
+
+    if (!success && inode_sector != 0) 
+        free_map_release(inode_sector, 1);
+
+    return success;
+}
+
+/*! Changes the directory to the one specified. */
+bool filesys_change_dir(char* name) {
+    struct dir *dir = thread_current()->pwd;
+    struct dir *dir2;
+    char * file;
+    if (!dir_parse(name, &dir, &file))
+        return false;
+
+    struct inode* inode;
+    if (dir_lookup(dir, file, &inode)) {
+        dir2 = dir_open(inode);
+        dir_close(thread_current()->pwd);
+        dir_close(dir);
+        thread_current()->pwd = dir2;
+        return true;
+    } else {
+        dir_close(dir);
+        return false;
+    }
 }
 
 /*! Opens the file with the given NAME.  Returns the new file if successful
     or a null pointer otherwise.  Fails if no file named NAME exists,
     or if an internal memory allocation fails. */
 struct file * filesys_open(const char *name) {
-    struct dir *dir = dir_open_root();
     struct inode *inode = NULL;
 
+    if (strcmp(name, "/") == 0) {
+        inode = inode_open(ROOT_DIR_SECTOR);
+        return file_open(inode);
+    }
+
+    struct dir *dir = thread_current()->pwd;
+    char * file;
+    if (!dir_parse((char*)name, &dir, &file))
+        return false;
     if (dir != NULL)
-        dir_lookup(dir, name, &inode);
+        dir_lookup(dir, file, &inode);
     dir_close(dir);
 
     return file_open(inode);
@@ -71,8 +138,37 @@ struct file * filesys_open(const char *name) {
     Fails if no file named NAME exists, or if an internal memory allocation
     fails. */
 bool filesys_remove(const char *name) {
-    struct dir *dir = dir_open_root();
-    bool success = dir != NULL && dir_remove(dir, name);
+    struct inode *inode = NULL;
+
+    if (strcmp(name, "/") == 0) {
+        return false;
+    }
+
+    struct dir *dir = thread_current()->pwd;
+    char * file;
+    if (!dir_parse((char*)name, &dir, &file))
+        return false;
+
+    bool empty = true;
+    dir_lookup(dir, file, &inode);
+    struct dir* dir2 = dir_open(inode);
+    if (dir2) {
+        struct file* chk_dir = file_open(inode);
+        if (file_is_dir(chk_dir)) {
+            char n[NAME_MAX + 1];
+            empty = !dir_readdir(dir2,n);
+            if (empty) {
+                dir_remove(dir2, ".");
+                dir_remove(dir2, "..");
+            }
+        }
+        file_close(chk_dir);
+        dir_close(dir2);
+    }
+    if (!empty)
+        return false;
+    
+    bool success = dir != NULL && dir_remove(dir, file);
     dir_close(dir);
 
     return success;
@@ -84,6 +180,11 @@ static void do_format(void) {
     free_map_create();
     if (!dir_create(ROOT_DIR_SECTOR, 16))
         PANIC("root directory creation failed");
+    
+    struct dir* dir = dir_open(inode_open(ROOT_DIR_SECTOR));
+    dir_add(dir, "..", ROOT_DIR_SECTOR);
+    dir_close(dir);
+
     free_map_close();
     printf("done.\n");
 }

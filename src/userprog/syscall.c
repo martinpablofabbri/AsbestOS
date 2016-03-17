@@ -1,7 +1,9 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <user/syscall.h>
 #include <list.h>
+#include <string.h>
 #include "devices/shutdown.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -12,6 +14,8 @@
 #include "threads/synch.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 
 static void syscall_handler(struct intr_frame *);
 bool access_ok (const void *addr, unsigned long size);
@@ -32,6 +36,10 @@ static int sys_filesize(int fd);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
+static bool sys_mkdir(const char* dir);
+static bool sys_chdir(const char* dir);
+static bool sys_readdir(int fd, char* name);
+static int sys_inumber(int fd);
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -39,6 +47,10 @@ struct file_item {
 					   file_item. */
     struct file *file;                   /*!< Reference to file
 					   returned by filesys code. */
+    bool is_dir;                         /*!< Flag if the file is a
+                                           directory. */
+    struct dir *dir;                     /*!< Dir if the file is a
+                                           directory. */
     int fd;                              /*!< File descriptor
 					   associated with the file. */
 };
@@ -167,7 +179,18 @@ static void syscall_handler(struct intr_frame *f) {
     case SYS_TELL:
         *eax = SYSCALL_1(sys_tell, int);
         break;
-
+    case SYS_MKDIR:
+        *eax = SYSCALL_1(sys_mkdir, const char*);
+        break;
+    case SYS_CHDIR:
+        *eax = SYSCALL_1(sys_chdir, const char*);
+        break;
+    case SYS_READDIR:
+        *eax = SYSCALL_2(sys_readdir, int, char*);
+        break;
+    case SYS_INUMBER:
+        *eax = SYSCALL_1(sys_inumber, int);
+        break;
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
     }
@@ -266,6 +289,10 @@ static int sys_read (int fd, void *buffer, unsigned size) {
         // no matching file descriptor
     }
     file = fitem->file;
+
+    if (file_is_dir(file))
+        return -1;
+
     bytes_read = file_read(file, buffer, size);
 
     return bytes_read;
@@ -299,6 +326,10 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
         // no matching file descriptor
     }
     file = fitem->file;
+
+    if (file_is_dir(file))
+        return -1;
+
     bytes_written = file_write(file, buffer, size);
 
     return bytes_written;
@@ -310,7 +341,17 @@ static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
-    bool ret = filesys_create(name, initial_size);
+    if (strlen(name) > READDIR_MAX_LEN)
+        return false;
+
+    char* k_name = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_name)
+        return false;
+
+    strlcpy(k_name, name, READDIR_MAX_LEN + 1);
+
+    bool ret = filesys_create(k_name, initial_size);
+    free(k_name);
 
     return ret;
 }
@@ -332,13 +373,25 @@ static int sys_open(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
+    char* k_name = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_name)
+        return false;
+    strlcpy(k_name, name, READDIR_MAX_LEN + 1);
+
     struct file_item *fitem = malloc(sizeof(struct file_item));
-    file = filesys_open(name);
+    file = filesys_open(k_name);
+    free(k_name);
     if (file == NULL) {
         return -1;
     }
 
     fitem->file = file;
+    if (file_is_dir(file)) {
+        fitem->is_dir = true;
+        fitem->dir = dir_open(file_get_inode(file));
+    } else {
+        fitem->is_dir = false;
+    }
     struct thread *curr_thread = thread_current();
     fd = curr_thread->lowest_available_fd;
     curr_thread->lowest_available_fd += 1;
@@ -403,4 +456,75 @@ static void sys_close(int fd) {
     // remove file_item from opened files list and free
     list_remove(&fitem->elem);
     free(fitem);
+}
+
+/* Make a directory. */
+static bool sys_mkdir(const char* dir) {
+    if (dir == NULL || !access_ok((void*) dir, sizeof(const char *)))
+	sys_exit(-1);
+
+    char* k_dir = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_dir)
+        return false;
+
+    strlcpy(k_dir, dir, READDIR_MAX_LEN + 1);
+
+    // TODO(keegan): don't have the 16 be constant
+    bool ret = filesys_create_dir(k_dir, 16);
+
+    free(k_dir);
+
+    return ret;
+}
+
+/* Change directories. */
+static bool sys_chdir(const char* dir) {
+    if (dir == NULL || !access_ok((void*) dir, sizeof(const char *)))
+	sys_exit(-1);
+
+    char* k_dir = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_dir)
+        return false;
+
+    strlcpy(k_dir, dir, READDIR_MAX_LEN + 1);
+
+    bool ret = filesys_change_dir(k_dir);
+
+    free(k_dir);
+
+    return ret;
+}
+
+/* Read the entries in a directory. */
+static bool sys_readdir(int fd, char* name) {
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+	sys_exit(-1);
+
+    struct file *file;
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return false;
+        // no matching file descriptor
+    }
+    file = fitem->file;
+
+    if (!file_is_dir(file))
+        return false;
+
+    return dir_readdir(fitem->dir, name);
+}
+
+/* Returns the inode number of the entry. */
+static int sys_inumber(int fd) {
+    struct file *file;
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return -1;
+        // no matching file descriptor
+    }
+    file = fitem->file;
+
+    return (int)inode_get_inumber(file_get_inode(file));
 }

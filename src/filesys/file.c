@@ -1,5 +1,6 @@
 #include "filesys/file.h"
 #include <debug.h>
+#include "filesys/cache.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 
@@ -46,6 +47,11 @@ void file_close(struct file *file) {
 /*! Returns the inode encapsulated by FILE. */
 struct inode * file_get_inode(struct file *file) {
     return file->inode;
+}
+
+/*! Returns true if the given file is a directory. */
+bool file_is_dir(struct file *file) {
+    return inode_is_dir(file->inode);
 }
 
 /*! Reads SIZE bytes from FILE into BUFFER, starting at the file's current
