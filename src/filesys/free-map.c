@@ -33,6 +33,36 @@ bool free_map_allocate(size_t cnt, block_sector_t *sectorp) {
     return sector != BITMAP_ERROR;
 }
 
+bool free_map_index_allocate(int sectors, struct inode_disk* inode_disk_) {
+    // TODO(jg) (done?)
+    int sector_idx;
+    for (sector_idx = 0; sector_idx < sectors; ++sector_idx) {
+	block_sector_t *sectorp = idx2block_sectorp(sector_idx, inode_disk_);
+	block_sector_t sector = bitmap_scan_and_flip(free_map, 0, 1, false);
+
+	// If we fail to get a sector, free all previously obtained sectors
+	// and return false
+	if (sector == BITMAP_ERROR
+	    || free_map_file == NULL
+	    || !bitmap_write(free_map, free_map_file)) {
+	    // TODO(jg): Error, free all previously set sectors
+	    int sector_idx_to_clear;
+	    for (sector_idx_to_clear = 0;
+		 sector_idx_to_clear <= sector_idx;
+		 ++sector_idx_to_clear) {
+		bitmap_set_multiple(free_map, idx2block_sector(sector_idx, inode_disk_), 1, false);
+		// TODO(jg): should we overwrite now-bad sectors in our index with -1 or something?
+	    }
+	    return false;
+        } 
+
+	// Not bitmap error, free_map_file != NULL, bitmap_write successful
+	*sectorp = sector;
+    }
+    // All sectors success
+    return true;
+}
+
 /*! Makes CNT sectors starting at SECTOR available for use. */
 void free_map_release(block_sector_t sector, size_t cnt) {
     ASSERT(bitmap_all(free_map, sector, cnt));

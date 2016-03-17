@@ -9,33 +9,12 @@
 
 /*! Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
-#define NUM_DIRECT 124
-#define NUM_INDIRECT 1
-#define NUM_DOUBLE_INDIRECT 1
 
-/*! On-disk inode.
-    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
-struct inode_disk {
-    // Metadata
-    block_sector_t start;               /*!< First data sector. */
-    off_t length;                       /*!< File size in bytes. */
-    // Sector pointers
-    block_sector_t direct[NUM_DIRECT];
-    block_sector_t *indirect[NUM_INDIRECT];
-    block_sector_t **double_indirect[NUM_DOUBLE_INDIRECT];
-
-    
-    // TODO(jg): remove
-    /* unsigned magic;                     /\*!< Magic number. *\/ */
-    /* uint32_t unused[125];               /\*!< Not used. *\/ */
-};
-
-/*! Get the block sector given the offset and an inode_disk */
-static block_sector_t off2block_sector (off_t offset, const struct inode_disk *inode_disk_) {
-    int block_idx = offset / BLOCK_SECTOR_SIZE;
+/*! Get ptr to block sector given the block index and an inode_disk */
+block_sector_t* idx2block_sectorp (int block_idx, struct inode_disk *inode_disk_) {
     // Direct block sector
     if (block_idx < NUM_DIRECT) {
-	return inode_disk_->direct[block_idx];
+	return &(inode_disk_->direct[block_idx]);
     }
 
     // Single indirect
@@ -43,14 +22,25 @@ static block_sector_t off2block_sector (off_t offset, const struct inode_disk *i
     if (block_idx < NUM_DIRECT + NUM_INDIRECT * 128) {
 	int block_idx_modified = block_idx - NUM_DIRECT;
 	int indirect_idx = (block_idx_modified) / 128;
-	return inode_disk_->indirect[indirect_idx][block_idx_modified];
+	return &(inode_disk_->indirect[indirect_idx][block_idx_modified]);
     }
 
     // Double indirect required
     int block_idx_modified = (block_idx - NUM_DIRECT) - NUM_INDIRECT * 128;
     int indirect_idx = (block_idx_modified) / 128;
     int double_indirect_idx = block_idx_modified / (128*128);
-    return inode_disk_->double_indirect[double_indirect_idx][indirect_idx][block_idx_modified];
+    return &(inode_disk_->double_indirect[double_indirect_idx][indirect_idx][block_idx_modified]);
+}
+
+/*! Get block sector given the block index and an inode_disk */
+block_sector_t idx2block_sector (int block_idx, struct inode_disk *inode_disk_) {
+    return *idx2block_sectorp(block_idx, inode_disk_);
+}
+
+/*! Get the block sector given the offset and an inode_disk */
+block_sector_t offset2block_sector (off_t offset, struct inode_disk *inode_disk_) {
+    int block_idx = offset / BLOCK_SECTOR_SIZE;
+    return idx2block_sector(block_idx, inode_disk_);
 }
 
 /*! Returns the number of sectors to allocate for an inode SIZE
@@ -111,15 +101,18 @@ bool inode_create(block_sector_t sector, off_t length) {
         disk_inode->length = length;
 	// TODO(jg): remove
         /* disk_inode->magic = INODE_MAGIC; */
-        if (free_map_allocate(sectors, &disk_inode->start)) {
+
+	// TODO(jg)(done?): allocate "sectors" number of blocks
+	
+        if (free_map_index_allocate(sectors, disk_inode)) {
             block_write(fs_device, sector, disk_inode);
             if (sectors > 0) {
                 static char zeros[BLOCK_SECTOR_SIZE];
                 size_t i;
               
                 for (i = 0; i < sectors; i++) 
-		    // TODO(jg): use indexing instead of contiguous blocks assumption
-                    block_write(fs_device, disk_inode->start + i, zeros);
+		    // TODO(jg) (done?): use indexing instead of contiguous blocks assumption
+                    block_write(fs_device, idx2block_sector(i, disk_inode), zeros);
             }
             success = true; 
         }

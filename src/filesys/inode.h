@@ -20,4 +20,30 @@ void inode_deny_write(struct inode *);
 void inode_allow_write(struct inode *);
 off_t inode_length(const struct inode *);
 
+/* inode index constants */
+#define NUM_DIRECT 124
+#define NUM_INDIRECT 1
+#define NUM_DOUBLE_INDIRECT 1
+
+/*! On-disk inode.
+    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+struct inode_disk {
+    // Metadata
+    block_sector_t start;               /*!< First data sector. */
+    off_t length;                       /*!< File size in bytes. */
+    // Sector pointers
+    block_sector_t direct[NUM_DIRECT];
+    block_sector_t *indirect[NUM_INDIRECT];
+    block_sector_t **double_indirect[NUM_DOUBLE_INDIRECT];
+
+    
+    // TODO(jg): remove
+    /* unsigned magic;                     /\*!< Magic number. *\/ */
+    /* uint32_t unused[125];               /\*!< Not used. *\/ */
+};
+
+block_sector_t* idx2block_sectorp (int block_idx, struct inode_disk *inode_disk_);
+
+block_sector_t idx2block_sector (int block_idx, struct inode_disk *inode_disk_);
+block_sector_t offset2block_sector (off_t offset, struct inode_disk *inode_disk_);
 #endif /* filesys/inode.h */
