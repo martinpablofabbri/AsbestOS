@@ -14,6 +14,8 @@
 #include "threads/synch.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 
 static void syscall_handler(struct intr_frame *);
 bool access_ok (const void *addr, unsigned long size);
@@ -36,6 +38,8 @@ static unsigned sys_tell (int fd);
 static void sys_close(int fd);
 static bool sys_mkdir(const char* dir);
 static bool sys_chdir(const char* dir);
+static bool sys_readdir(int fd, char* name);
+static int sys_inumber(int fd);
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -43,6 +47,10 @@ struct file_item {
 					   file_item. */
     struct file *file;                   /*!< Reference to file
 					   returned by filesys code. */
+    bool is_dir;                         /*!< Flag if the file is a
+                                           directory. */
+    struct dir *dir;                     /*!< Dir if the file is a
+                                           directory. */
     int fd;                              /*!< File descriptor
 					   associated with the file. */
 };
@@ -176,6 +184,12 @@ static void syscall_handler(struct intr_frame *f) {
         break;
     case SYS_CHDIR:
         *eax = SYSCALL_1(sys_chdir, const char*);
+        break;
+    case SYS_READDIR:
+        *eax = SYSCALL_2(sys_readdir, int, char*);
+        break;
+    case SYS_INUMBER:
+        *eax = SYSCALL_1(sys_inumber, int);
         break;
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
@@ -372,6 +386,12 @@ static int sys_open(const char *name) {
     }
 
     fitem->file = file;
+    if (file_is_dir(file)) {
+        fitem->is_dir = true;
+        fitem->dir = dir_open(file_get_inode(file));
+    } else {
+        fitem->is_dir = false;
+    }
     struct thread *curr_thread = thread_current();
     fd = curr_thread->lowest_available_fd;
     curr_thread->lowest_available_fd += 1;
@@ -473,4 +493,38 @@ static bool sys_chdir(const char* dir) {
     free(k_dir);
 
     return ret;
+}
+
+/* Read the entries in a directory. */
+static bool sys_readdir(int fd, char* name) {
+    if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
+	sys_exit(-1);
+
+    struct file *file;
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return false;
+        // no matching file descriptor
+    }
+    file = fitem->file;
+
+    if (!file_is_dir(file))
+        return false;
+
+    return dir_readdir(fitem->dir, name);
+}
+
+/* Returns the inode number of the entry. */
+static int sys_inumber(int fd) {
+    struct file *file;
+
+    struct file_item *fitem = fileitem_from_fd(fd);
+    if (fitem == NULL) {
+        return -1;
+        // no matching file descriptor
+    }
+    file = fitem->file;
+
+    return (int)inode_get_inumber(file_get_inode(file));
 }
