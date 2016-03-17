@@ -33,7 +33,6 @@ struct inode {
     int open_cnt;                       /*!< Number of openers. */
     bool removed;                       /*!< True if deleted, false otherwise. */
     int deny_write_cnt;                 /*!< 0: writes ok, >0: deny writes. */
-    struct inode_disk data;             /*!< Inode content. */
 };
 
 /*! Returns the block device sector that contains byte offset POS
@@ -42,8 +41,14 @@ struct inode {
     POS. */
 static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
-    if (pos < inode->data.length)
-        return inode->data.start + pos / BLOCK_SECTOR_SIZE;
+
+    struct inode_disk* id = (struct inode_disk*)cache_pin(inode->sector);
+    off_t length = id->length;
+    block_sector_t start = id->start;
+    cache_unpin((void*)id);
+
+    if (pos < length)
+        return start + pos / BLOCK_SECTOR_SIZE;
     else
         return -1;
 }
@@ -121,7 +126,6 @@ struct inode * inode_open(block_sector_t sector) {
     inode->open_cnt = 1;
     inode->deny_write_cnt = 0;
     inode->removed = false;
-    cache_read(inode->sector, &inode->data, BLOCK_SECTOR_SIZE, 0);
     return inode;
 }
 
@@ -152,9 +156,14 @@ void inode_close(struct inode *inode) {
  
         /* Deallocate blocks if removed. */
         if (inode->removed) {
+            struct inode_disk* id = (struct inode_disk*)cache_pin(inode->sector);
+            off_t length = id->length;
+            block_sector_t start = id->start;
+            cache_unpin((void*)id);
+
+
             free_map_release(inode->sector, 1);
-            free_map_release(inode->data.start,
-                             bytes_to_sectors(inode->data.length)); 
+            free_map_release(start, bytes_to_sectors(length)); 
         }
 
         free(inode); 
@@ -259,6 +268,10 @@ void inode_allow_write (struct inode *inode) {
 
 /*! Returns the length, in bytes, of INODE's data. */
 off_t inode_length(const struct inode *inode) {
-    return inode->data.length;
+    struct inode_disk* id = (struct inode_disk*)cache_pin(inode->sector);
+    off_t length = id->length;
+    cache_unpin((void*)id);
+
+    return length;
 }
 
