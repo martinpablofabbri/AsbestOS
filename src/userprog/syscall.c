@@ -275,6 +275,10 @@ static int sys_read (int fd, void *buffer, unsigned size) {
         // no matching file descriptor
     }
     file = fitem->file;
+
+    if (file_is_dir(file))
+        return -1;
+
     bytes_read = file_read(file, buffer, size);
 
     return bytes_read;
@@ -308,6 +312,10 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
         // no matching file descriptor
     }
     file = fitem->file;
+
+    if (file_is_dir(file))
+        return -1;
+
     bytes_written = file_write(file, buffer, size);
 
     return bytes_written;
