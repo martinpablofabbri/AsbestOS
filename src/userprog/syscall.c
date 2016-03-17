@@ -32,8 +32,6 @@ static int sys_filesize(int fd);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
-static struct lock filesys_lock; /*!< Lock to prevent concurrent
-				   access to filesys.c functions. */
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -86,7 +84,6 @@ int get_user_4 (const void *addr, uint32_t* dest) {
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
-    lock_init(&filesys_lock);
 }
 
 
@@ -188,8 +185,6 @@ void sys_exit (int status) {
     /* Clean up any file descriptors. */
     struct list *open_files = &thread_current()->open_files;
 
-    lock_acquire(&filesys_lock);
-
     while (!list_empty(open_files)) {
 	struct file_item *fitem = list_entry(list_pop_front(open_files),
 					     struct file_item,
@@ -197,8 +192,6 @@ void sys_exit (int status) {
 	file_close(fitem->file);
 	free(fitem);
     }
-
-    lock_release(&filesys_lock);
 
     printf("%s: exit(%d)\n", thread_name(), status);
     thread_current()->retval = status;
@@ -267,17 +260,14 @@ static int sys_read (int fd, void *buffer, unsigned size) {
     struct file *file;
     int bytes_read;
 
-    lock_acquire(&filesys_lock);
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-        lock_release(&filesys_lock);
         return -1;
         // no matching file descriptor
     }
     file = fitem->file;
     bytes_read = file_read(file, buffer, size);
 
-    lock_release(&filesys_lock);
     return bytes_read;
 
 }
@@ -303,17 +293,14 @@ static int sys_write (int fd, const void *buffer, unsigned size) {
     struct file *file;
     int bytes_written;
 
-    lock_acquire(&filesys_lock);
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-        lock_release(&filesys_lock);
         return -1;
         // no matching file descriptor
     }
     file = fitem->file;
     bytes_written = file_write(file, buffer, size);
 
-    lock_release(&filesys_lock);
     return bytes_written;
 
 }
@@ -323,11 +310,8 @@ static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
-    lock_acquire(&filesys_lock);
-
     bool ret = filesys_create(name, initial_size);
 
-    lock_release(&filesys_lock);
     return ret;
 }
 
@@ -336,11 +320,7 @@ static bool sys_remove(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
-    lock_acquire(&filesys_lock);
-
     bool ret = filesys_remove(name);
-
-    lock_release(&filesys_lock);
     return ret;
 }
 
@@ -352,12 +332,9 @@ static int sys_open(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
-    lock_acquire(&filesys_lock);
-
     struct file_item *fitem = malloc(sizeof(struct file_item));
     file = filesys_open(name);
     if (file == NULL) {
-        lock_release(&filesys_lock);
         return -1;
     }
 
@@ -369,7 +346,6 @@ static int sys_open(const char *name) {
     fitem->fd = fd;
 
     list_push_back(&curr_thread->open_files, &fitem->elem);
-    lock_release(&filesys_lock);
     return fd;
 }
 
@@ -378,12 +354,9 @@ static int sys_filesize(int fd) {
     struct file *file;
     int length;
 
-    lock_acquire(&filesys_lock);
-
     file = fileitem_from_fd(fd)->file;
     length = file_length(file);
 
-    lock_release(&filesys_lock);
     return length;
 }
 
@@ -391,17 +364,13 @@ static int sys_filesize(int fd) {
 static void sys_seek (int fd, unsigned position) {
     struct file *file;
 
-    lock_acquire(&filesys_lock);
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-        lock_release(&filesys_lock);
         return;
         // no matching file descriptor
     }
     file = fitem->file;
     file_seek(file, position);
-
-    lock_release(&filesys_lock);
 }
 
 /* Get currect offset into file */
@@ -409,29 +378,24 @@ static unsigned sys_tell (int fd) {
     struct file *file;
     unsigned pos;
 
-    lock_acquire(&filesys_lock);
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
-        lock_release(&filesys_lock);
         return 0;
         // no matching file descriptor
     }
     file = fitem->file;
     pos = file_tell(file);
 
-    lock_release(&filesys_lock);
     return pos;
 }
 
 /* Close file using file descriptor. */
 static void sys_close(int fd) {
     struct file *file;
-    lock_acquire(&filesys_lock);
 
     struct file_item *fitem = fileitem_from_fd(fd);
     if (fitem == NULL) {
         // No matching file descriptor. File possibly already closed.
-        lock_release(&filesys_lock);
         return;
     }
     file = fitem->file;
@@ -439,6 +403,4 @@ static void sys_close(int fd) {
     // remove file_item from opened files list and free
     list_remove(&fitem->elem);
     free(fitem);
-
-    lock_release(&filesys_lock);
 }
