@@ -16,7 +16,7 @@ enum cache_entry_status {
 struct cache_entry {
     block_sector_t sector;
     enum cache_entry_status status;
-    unsigned int index;
+    uint8_t* data;
 };
 
 struct block* fs_block;
@@ -47,7 +47,7 @@ void cache_init(struct block* block) {
     int i;
     for (i = 0; i < CACHE_SIZE; i++) {
         cache_info[i].status = EMPTY;
-        cache_info[i].index = i;
+        cache_info[i].data = &block_cache[i * BLOCK_SECTOR_SIZE];
     }
 
     lock_init(&cache_lock_);
@@ -62,8 +62,7 @@ void cache_read(block_sector_t sector, void* buffer, off_t size, off_t offset) {
     if (!ent)
         ent = cache_load(sector);
 
-    void* src = &block_cache[ent->index * BLOCK_SECTOR_SIZE + offset];
-    memcpy(buffer, src, size);
+    memcpy(buffer, ent->data + offset, size);
 
     cache_unlock();
 }
@@ -76,8 +75,7 @@ void cache_write(block_sector_t sector, const void *buffer, off_t size, off_t of
     if (!ent)
         ent = cache_load(sector);
 
-    void* dst = &block_cache[ent->index * BLOCK_SECTOR_SIZE + offset];
-    memcpy(dst, buffer, size);
+    memcpy(ent->data + offset, buffer, size);
     ent->status = DIRTY;
     
     cache_unlock();
@@ -117,8 +115,7 @@ struct cache_entry* cache_load (block_sector_t sector) {
     ent = cache_get_empty();
     ent->status = ALIVE;
     ent->sector = sector;
-    void* dst = &block_cache[ent->index * BLOCK_SECTOR_SIZE];
-    block_read(fs_block, sector, dst);
+    block_read(fs_block, sector, ent->data);
     return ent;
 }
 
@@ -150,8 +147,7 @@ struct cache_entry* cache_choose_evictee (void) {
 void cache_evict (struct cache_entry* ent) {
     ASSERT(ent != NULL);
     if (ent->status == DIRTY) {
-        void* buf = &block_cache[ent->index * BLOCK_SECTOR_SIZE];
-        block_write(fs_block, ent->sector, buf);
+        block_write(fs_block, ent->sector, ent->data);
     }
     ent->status = EMPTY;
 }
