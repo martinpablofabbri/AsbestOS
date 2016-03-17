@@ -32,6 +32,7 @@ static int sys_filesize(int fd);
 static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
+static bool sys_mkdir(const char* dir);
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -167,6 +168,8 @@ static void syscall_handler(struct intr_frame *f) {
     case SYS_TELL:
         *eax = SYSCALL_1(sys_tell, int);
         break;
+    case SYS_MKDIR:
+        *eax = SYSCALL_1(sys_mkdir, const char*);
 
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
@@ -403,4 +406,15 @@ static void sys_close(int fd) {
     // remove file_item from opened files list and free
     list_remove(&fitem->elem);
     free(fitem);
+}
+
+/* Make a directory. */
+static bool sys_mkdir(const char* dir) {
+    if (dir == NULL || !access_ok((void*) dir, sizeof(const char *)))
+	sys_exit(-1);
+
+    //    bool ret = filesys_create(name, initial_size);
+
+    //return ret;
+    return false;
 }

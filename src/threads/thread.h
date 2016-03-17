@@ -125,7 +125,15 @@ struct thread {
     struct file *executing_file;        /*!< Reference to the file
                                            descriptor of the current
                                            executable. */
+    /**@}*/
+#endif
+
+#ifdef FILESYS
+    /*! Owned by filesys/filesys.c. */
     /**@{*/
+    struct dir *pwd;                    /*!< Current working directory. */
+
+    /**@}*/
 #endif
 
     /*! Owned by thread.c. */

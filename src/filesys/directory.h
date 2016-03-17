@@ -21,6 +21,9 @@ struct dir *dir_reopen(struct dir *);
 void dir_close(struct dir *);
 struct inode *dir_get_inode(struct dir *);
 
+/* Parsing of absolute or relative paths. */
+bool dir_parse (const char* file, struct dir** dir, char** name);
+
 /* Reading and writing. */
 bool dir_lookup(const struct dir *, const char *name, struct inode **);
 bool dir_add(struct dir *, const char *name, block_sector_t);

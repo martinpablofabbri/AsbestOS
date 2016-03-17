@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /*! A directory. */
 struct dir {
@@ -202,3 +203,14 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     return false;
 }
 
+/*! Takes a path specified by FILE and attempts to parse it into a
+    directory and filename, with DIR as the current working directory.
+    If successful, returns true, with DIR set to the struct
+    dir* corresponding to the lowest directory, and NAME
+    corresponding to the the name of the file (or folder) in that
+    directory. Returns false on error. */
+bool dir_parse (const char* file, struct dir** dir, char** name) {
+    printf("Parsing file %s\n", file);
+    *name = (char*)file;
+    return true;
+}
