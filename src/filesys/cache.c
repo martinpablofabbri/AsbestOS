@@ -55,29 +55,29 @@ void cache_init(struct block* block) {
 
 /*! Read a block from the cache, bringing the page in from the disk if
   necessary. */
-void cache_read(block_sector_t sector, void* buffer) {
+void cache_read(block_sector_t sector, void* buffer, off_t size, off_t offset) {
     cache_lock();
 
     struct cache_entry* ent = cache_lookup(sector);
     if (!ent)
         ent = cache_load(sector);
 
-    void* src = &block_cache[ent->index * BLOCK_SECTOR_SIZE];
-    memcpy(buffer, src, BLOCK_SECTOR_SIZE);
+    void* src = &block_cache[ent->index * BLOCK_SECTOR_SIZE + offset];
+    memcpy(buffer, src, size);
 
     cache_unlock();
 }
 
 /*! Write information to the cache. */
-void cache_write(block_sector_t sector, const void *buffer) {
+void cache_write(block_sector_t sector, const void *buffer, off_t size, off_t offset) {
     cache_lock();
 
     struct cache_entry* ent = cache_lookup(sector);
     if (!ent)
         ent = cache_load(sector);
 
-    void* dst = &block_cache[ent->index * BLOCK_SECTOR_SIZE];
-    memcpy(dst, buffer, BLOCK_SECTOR_SIZE);
+    void* dst = &block_cache[ent->index * BLOCK_SECTOR_SIZE + offset];
+    memcpy(dst, buffer, size);
     ent->status = DIRTY;
     
     cache_unlock();
