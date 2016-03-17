@@ -107,11 +107,15 @@ bool filesys_change_dir(char* name) {
 struct file * filesys_open(const char *name) {
     struct inode *inode = NULL;
 
+    if (strcmp(name, "/") == 0) {
+        inode = inode_open(ROOT_DIR_SECTOR);
+        return file_open(inode);
+    }
+
     struct dir *dir = thread_current()->pwd;
     char * file;
     if (!dir_parse((char*)name, &dir, &file))
         return false;
-
     if (dir != NULL)
         dir_lookup(dir, file, &inode);
     dir_close(dir);
