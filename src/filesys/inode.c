@@ -118,6 +118,7 @@ bool inode_create(block_sector_t sector, off_t length) {
                 size_t i;
               
                 for (i = 0; i < sectors; i++) 
+		    // TODO(jg): use indexing instead of contiguous blocks assumption
                     block_write(fs_device, disk_inode->start + i, zeros);
             }
             success = true; 
@@ -187,6 +188,7 @@ void inode_close(struct inode *inode) {
         /* Deallocate blocks if removed. */
         if (inode->removed) {
             free_map_release(inode->sector, 1);
+	    // TODO(jg): free all sectors using the inode indexes
             free_map_release(inode->data.start,
                              bytes_to_sectors(inode->data.length)); 
         }
@@ -206,6 +208,7 @@ void inode_remove(struct inode *inode) {
    Returns the number of bytes actually read, which may be less
    than SIZE if an error occurs or end of file is reached. */
 off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset) {
+    // TODO(jg): use index to read non-contiguous sectors
     uint8_t *buffer = buffer_;
     off_t bytes_read = 0;
     uint8_t *bounce = NULL;
@@ -257,6 +260,7 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
     (Normally a write at end of file would extend the inode, but
     growth is not yet implemented.) */
 off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t offset) {
+    // TODO(jg): use index to write non-contiguous sectors
     const uint8_t *buffer = buffer_;
     off_t bytes_written = 0;
     uint8_t *bounce = NULL;
