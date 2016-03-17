@@ -93,6 +93,25 @@ void cache_flush (void) {
     free(block_cache);
 }
 
+/*! Returns a pointer to the cache buffer containing the data from the
+  specified sector. Needs to be unpinned at some point. Must be used
+  carefully, since not unpinning could lead to deadlock. */
+void* cache_pin (block_sector_t sector) {
+    struct cache_entry* ent = entry_acquire(sector);
+    return (void*)ent->data;
+}
+
+/*! Given an address, free the cache line associated with the access. */
+void cache_unpin (void* addr) {
+    uintptr_t a = (uintptr_t) addr;
+    unsigned int index = (a - (uintptr_t)block_cache) / BLOCK_SECTOR_SIZE;
+    struct cache_entry* ent = &cache_info[index];
+    ASSERT(ent->data == addr);
+    ASSERT(lock_held_by_current_thread(&ent->ent_lock));
+    lock_release(&ent->ent_lock);
+}
+
+
 /*! Acquires an entry for the specified sector. The entry will be
   locked upon exit from the routine. */
 struct cache_entry* entry_acquire (block_sector_t sector) {
