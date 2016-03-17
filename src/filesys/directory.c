@@ -23,7 +23,14 @@ struct dir_entry {
 /*! Creates a directory with space for ENTRY_CNT entries in the
     given SECTOR.  Returns true if successful, false on failure. */
 bool dir_create(block_sector_t sector, size_t entry_cnt) {
-    return inode_create(sector, entry_cnt * sizeof(struct dir_entry), true);
+    bool success;
+    success = inode_create(sector, entry_cnt * sizeof(struct dir_entry), true);
+    if (success) {
+        struct dir* dir = dir_open(inode_open(sector));
+        dir_add(dir, ".", sector);
+        dir_close(dir);
+    }
+    return success;
 }
 
 /*! Opens and returns the directory for the given INODE, of which
@@ -196,8 +203,11 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     while (inode_read_at(dir->inode, &e, sizeof(e), dir->pos) == sizeof(e)) {
         dir->pos += sizeof(e);
         if (e.in_use) {
-            strlcpy(name, e.name, NAME_MAX + 1);
-            return true;
+            if (strcmp(e.name,".") != 0 &&
+                strcmp(e.name,"..") != 0) {
+                strlcpy(name, e.name, NAME_MAX + 1);
+                return true;
+            }
         } 
     }
     return false;
