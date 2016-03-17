@@ -208,9 +208,46 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     If successful, returns true, with DIR set to the struct
     dir* corresponding to the lowest directory, and NAME
     corresponding to the the name of the file (or folder) in that
-    directory. Returns false on error. */
-bool dir_parse (const char* file, struct dir** dir, char** name) {
+    directory. Returns false on error. 
+
+    Note that this method modifies file in place. */
+bool dir_parse (char* file, struct dir** dir, char** name) {
     printf("Parsing file %s\n", file);
-    *name = (char*)file;
-    return true;
+    
+    bool success;
+    char* ind;
+
+    if (file[0] == '/') {
+        // Absolute path
+        //*dir = dir_open_root();
+        while (*file && *file == '/') {file++;}
+        ind = file;
+    } else {
+        ind = file;
+        while (*ind && *ind != '/') {ind++;}
+        if (*ind == '\0') {
+            // No more forward slashes
+            *dir = dir_reopen(*dir);
+            *name = file;
+            return true;
+        }
+        *(ind++) = '\0';
+        while (*ind && *ind == '/') {ind++;}
+        printf ("Directory name is %s\n", file);
+        
+        struct inode* inode;
+        if (dir_lookup(*dir, file, &inode)) {
+            *dir = dir_open(inode);
+            if (!(*dir))
+                return false;
+        } else {
+            return false;
+        }
+    }
+
+    struct dir* old_dir = *dir;
+    success = dir_parse(ind, dir, name);
+    dir_close(old_dir);
+
+    return success;
 }

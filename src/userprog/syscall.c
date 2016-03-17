@@ -1,7 +1,9 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <user/syscall.h>
 #include <list.h>
+#include <string.h>
 #include "devices/shutdown.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -170,7 +172,7 @@ static void syscall_handler(struct intr_frame *f) {
         break;
     case SYS_MKDIR:
         *eax = SYSCALL_1(sys_mkdir, const char*);
-
+        break;
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
     }
@@ -313,7 +315,14 @@ static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
-    bool ret = filesys_create(name, initial_size);
+    char* k_name = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_name)
+        return false;
+
+    strlcpy(k_name, name, READDIR_MAX_LEN + 1);
+
+    bool ret = filesys_create(k_name, initial_size);
+    free(k_name);
 
     return ret;
 }
@@ -413,8 +422,16 @@ static bool sys_mkdir(const char* dir) {
     if (dir == NULL || !access_ok((void*) dir, sizeof(const char *)))
 	sys_exit(-1);
 
-    //    bool ret = filesys_create(name, initial_size);
+    char* k_dir = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_dir)
+        return false;
 
-    //return ret;
-    return false;
+    strlcpy(k_dir, dir, READDIR_MAX_LEN + 1);
+
+    // TODO(keegan): don't have the 16 be constant
+    bool ret = filesys_create_dir(k_dir, 16);
+
+    free(k_dir);
+
+    return ret;
 }
