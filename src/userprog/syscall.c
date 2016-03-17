@@ -327,6 +327,9 @@ static bool sys_create(const char *name, uint32_t initial_size) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
+    if (strlen(name) > READDIR_MAX_LEN)
+        return false;
+
     char* k_name = (char*)malloc(READDIR_MAX_LEN + 1);
     if (!k_name)
         return false;
