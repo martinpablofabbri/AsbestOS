@@ -212,14 +212,12 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
 
     Note that this method modifies file in place. */
 bool dir_parse (char* file, struct dir** dir, char** name) {
-    printf("Parsing file %s\n", file);
-    
     bool success;
     char* ind;
 
     if (file[0] == '/') {
         // Absolute path
-        //*dir = dir_open_root();
+        *dir = dir_open_root();
         while (*file && *file == '/') {file++;}
         ind = file;
     } else {
@@ -233,7 +231,6 @@ bool dir_parse (char* file, struct dir** dir, char** name) {
         }
         *(ind++) = '\0';
         while (*ind && *ind == '/') {ind++;}
-        printf ("Directory name is %s\n", file);
         
         struct inode* inode;
         if (dir_lookup(*dir, file, &inode)) {

@@ -35,6 +35,7 @@ static void sys_seek (int fd, unsigned position);
 static unsigned sys_tell (int fd);
 static void sys_close(int fd);
 static bool sys_mkdir(const char* dir);
+static bool sys_chdir(const char* dir);
 
 /* Struct for list element with a file and file descriptor */
 struct file_item {
@@ -172,6 +173,9 @@ static void syscall_handler(struct intr_frame *f) {
         break;
     case SYS_MKDIR:
         *eax = SYSCALL_1(sys_mkdir, const char*);
+        break;
+    case SYS_CHDIR:
+        *eax = SYSCALL_1(sys_chdir, const char*);
         break;
     default:
         printf("Syscall %u: Not implemented.\n", syscall_num);
@@ -344,8 +348,14 @@ static int sys_open(const char *name) {
     if (name == NULL || !access_ok((void*) name, sizeof(const char *)))
 	sys_exit(-1);
 
+    char* k_name = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_name)
+        return false;
+    strlcpy(k_name, name, READDIR_MAX_LEN + 1);
+
     struct file_item *fitem = malloc(sizeof(struct file_item));
-    file = filesys_open(name);
+    file = filesys_open(k_name);
+    free(k_name);
     if (file == NULL) {
         return -1;
     }
@@ -430,6 +440,24 @@ static bool sys_mkdir(const char* dir) {
 
     // TODO(keegan): don't have the 16 be constant
     bool ret = filesys_create_dir(k_dir, 16);
+
+    free(k_dir);
+
+    return ret;
+}
+
+/* Change directories. */
+static bool sys_chdir(const char* dir) {
+    if (dir == NULL || !access_ok((void*) dir, sizeof(const char *)))
+	sys_exit(-1);
+
+    char* k_dir = (char*)malloc(READDIR_MAX_LEN + 1);
+    if (!k_dir)
+        return false;
+
+    strlcpy(k_dir, dir, READDIR_MAX_LEN + 1);
+
+    bool ret = filesys_change_dir(k_dir);
 
     free(k_dir);
 

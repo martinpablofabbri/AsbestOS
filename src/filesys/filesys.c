@@ -80,15 +80,42 @@ bool filesys_create_dir(char* name, size_t entry_cnt) {
     return success;
 }
 
+/*! Changes the directory to the one specified. */
+bool filesys_change_dir(char* name) {
+    block_sector_t inode_sector = 0;
+
+    struct dir *dir = thread_current()->pwd;
+    struct dir *dir2;
+    char * file;
+    if (!dir_parse(name, &dir, &file))
+        return false;
+
+    struct inode* inode;
+    if (dir_lookup(dir, file, &inode)) {
+        dir2 = dir_open(inode);
+        dir_close(thread_current()->pwd);
+        dir_close(dir);
+        thread_current()->pwd = dir2;
+        return true;
+    } else {
+        dir_close(dir);
+        return false;
+    }
+}
+
 /*! Opens the file with the given NAME.  Returns the new file if successful
     or a null pointer otherwise.  Fails if no file named NAME exists,
     or if an internal memory allocation fails. */
 struct file * filesys_open(const char *name) {
-    struct dir *dir = dir_open_root();
     struct inode *inode = NULL;
 
+    struct dir *dir = thread_current()->pwd;
+    char * file;
+    if (!dir_parse((char*)name, &dir, &file))
+        return false;
+
     if (dir != NULL)
-        dir_lookup(dir, name, &inode);
+        dir_lookup(dir, file, &inode);
     dir_close(dir);
 
     return file_open(inode);
