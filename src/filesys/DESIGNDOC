@@ -1,0 +1,280 @@
+       	       	     +-------------------------+
+                     |          CS 124         |
+                     | PROJECT 6: FILE SYSTEMS |
+                     |     DESIGN DOCUMENT     |
+                     +-------------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Keegan    Ryan      karyan@caltech.edu
+Jalen     Green     jpgreen@caltech.edu
+Martin    Fabbri    mfabbri@caltech.edu
+
+>> Specify how many late tokens you are using on this assignment:  
+0
+
+>> What is the Git repository and commit hash for your submission?
+
+   Repository URL: https://github.com/keeganryan/AsbestOS
+   commit ...
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course instructors.
+
+		     INDEXED AND EXTENSIBLE FILES
+		     ============================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+>> A2: What is the maximum size of a file supported by your inode
+>> structure?  Show your work.
+
+---- SYNCHRONIZATION ----
+
+>> A3: Explain how your code avoids a race if two processes attempt to
+>> extend a file at the same time.
+
+>> A4: Suppose processes A and B both have file F open, both
+>> positioned at end-of-file.  If A reads and B writes F at the same
+>> time, A may read all, part, or none of what B writes.  However, A
+>> may not read data other than what B writes, e.g. if B writes
+>> nonzero data, A is not allowed to see all zeros.  Explain how your
+>> code avoids this race.
+
+>> A5: Explain how your synchronization design provides "fairness".
+>> File access is "fair" if readers cannot indefinitely block writers
+>> or vice versa.  That is, many processes reading from a file cannot
+>> prevent forever another process from writing the file, and many
+>> processes writing to a file cannot prevent another process forever
+>> from reading the file.
+
+---- RATIONALE ----
+
+>> A6: Is your inode structure a multilevel index?  If so, why did you
+>> choose this particular combination of direct, indirect, and doubly
+>> indirect blocks?  If not, why did you choose an alternative inode
+>> structure, and what advantages and disadvantages does your
+>> structure have, compared to a multilevel index?
+
+			    SUBDIRECTORIES
+			    ==============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+// inode.c
+struct inode_disk {
+-    uint32_t unused[125];               /*!< Not used. */
++    bool is_dir;                        /*!< True if directory, false
++                                          otherwise. So directory
++                                          properties persist on disk. */
++    uint32_t unused[124];               /*!< Not used. */
+};
+
+// thread.h
+struct thread {
++    struct dir *pwd;                    /*!< Current working directory. */
+};
+
+// syscall.c
+struct file_item {
++    bool is_dir;                         /*!< Flag if the file is a
++                                           directory. */
++    struct dir *dir;                     /*!< Dir if the file is a
++                                           directory. */
+ };
+
+---- ALGORITHMS ----
+
+>> B2: Describe your code for traversing a user-specified path.  How
+>> do traversals of absolute and relative paths differ?
+
+We parse the path recursively using the dir_parse function. The function
+takes a file path and current directory as input, and returns a directory
+and file name as output. At each layer of recursion, a directory name is
+removed from the file path and a new directory is opened based on the last
+directory and the file path. This is repeated until the final state is reached.
+
+When the path is absolute, the new directory that is opened is the root
+directory. When it's relative, the path is relative to the previous directory.
+Files such as . and .. are represented as actual entries in the directory.
+
+---- SYNCHRONIZATION ----
+
+>> B4: How do you prevent races on directory entries?  For example,
+>> only one of two simultaneous attempts to remove a single file
+>> should succeed, as should only one of two simultaneous attempts to
+>> create a file with the same name, and so on.
+
+We didn't think about this much.
+
+>> B5: Does your implementation allow a directory to be removed if it
+>> is open by a process or if it is in use as a process's current
+>> working directory?  If so, what happens to that process's future
+>> file system operations?  If not, how do you prevent it?
+Yes, this is allowed. If deleted, references to the previous directory
+and the current directory (.. and .) are removed so we can tell if that
+has happened. Even though it is still open, we prevent other operations
+like deleting the referenced directory twice.
+
+---- RATIONALE ----
+
+>> B6: Explain why you chose to represent the current directory of a
+>> process the way you did.
+We add a struct dir* entry to the thread struct. This is so it would
+be easy to get that data for the current running thread at any point.
+
+			     BUFFER CACHE
+			     ============
+
+---- DATA STRUCTURES ----
+
+>> C1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+// In cache.c:
+// Represents the status of one of the 64 entries in the cache.
+enum cache_entry_status {
+    ALIVE,
+    DIRTY,
+    EMPTY
+};
+
+// Datastructure for each entry into the cache.
+struct cache_entry {
+    block_sector_t sector;                      /*! The sector which the lock
+                                                    is protecting the data of. */
+    block_sector_t evict_sector;                /*! The sector to which the
+                                                    data in the cache will be
+                                                    evicted to. */
+    enum cache_entry_status status;             /*! Status of the cache entry. */
+    uint8_t* data;                              /*! Pointer into block_cache
+                                                    where the data is stored. */
+    struct lock ent_lock;                       /*! Lock which protects access
+                                                    to the specified sector. */
+};
+
+struct block* fs_block;                      /*! The filesystem block device. */
+uint8_t* block_cache;                        /*! Array where cached data lives */
+struct cache_entry* cache_info;              /*! Array where the 64 cache_entry
+                                                 objects live. */
+struct lock cache_info_lock;                 /*! Lock the cache_info to prevent
+                                               updates. */
+
+// In function cache_choose_evictee (void)
+    static int ind = 0;                      /*! Static variable which is an
+                                                 index into cache_info for the
+                                                 clock replacement algorithm. */
+
+---- ALGORITHMS ----
+
+>> C2: Describe how your cache replacement algorithm chooses a cache
+>> block to evict.
+We use a static index into the array. When we need to evict a block, we select
+the cache_entry at that index. We increment the index, wrapping around the cache
+if necessary.
+
+>> C3: Describe your implementation of write-behind.
+When we write to a page, we change the status from ALIVE to DIRTY. When we evict
+a page, if the page is DIRTY we write it to disk.
+
+>> C4: Describe your implementation of read-ahead.
+We do not implement read-ahead.
+
+---- SYNCHRONIZATION ----
+
+>> C5: When one process is actively reading or writing data in a
+>> buffer cache block, how are other processes prevented from evicting
+>> that block?
+We have two types of locks, used for different purposes.
+
+The CACHE_INFO_LOCK protects the array of 64 cache entries. As long as a thread
+holds that lock, no other thread will modify the status or sector of any entry
+in cache_info. Since this is a global lock, no filesystem block device accesses
+occur in a thread as long as the thread holds the lock.
+
+The ENT_LOCK protects the data within the cache_entry that holds it and within
+the actual cached data itself.
+
+The actual process of reading, writing, and evicting is as follows, as a sample.
+1. Lock the CACHE_INFO_LOCK. This ensures that the sectors specified in the
+   cache_entry will be there once the entry lock is acquired.
+2. Search through the cache_entries for one matching the desired sector.
+3. If one is not found, and we must evict a cache entry to make room, select a
+   cache entry to evict.
+4. Acquire the ENT_LOCK of that cache entry. It may be held by another process,
+   but the other process will eventually release it. This ensures that we cannot
+   evict data that another process is currently relying on.
+5. Set the sector of the cache entry to the sector which will eventually move
+   in to that cache entry. This is so that when another process is looking for
+   that sector, it can find it even before all the data has been read from the
+   block device.
+6. Release the CACHE_INFO_LOCK. All of the cache_entry info is updated to the
+   state it is supposed to be, and once the ENT_LOCK is released, the desired
+   data will be in place.
+7. Evict the old data to the evict_sector and bring in the new data from the
+   specified sector. No other process will access the data at this time since
+   it is protected by the ENT_LOCK.
+8. At this point, the data is in place and ENT_LOCK is held. Manipulate the data
+   as desired.
+9. Release the ENT_LOCK.
+
+>> C6: During the eviction of a block from the cache, how are other
+>> processes prevented from attempting to access the block?
+We use the ENT_LOCK. See answer above.
+
+---- RATIONALE ----
+
+>> C7: Describe a file workload likely to benefit from buffer caching,
+>> and workloads likely to benefit from read-ahead and write-behind.
+Video playback would benefit from read-ahead, so the next video of information
+can be brought in while the current frames are being displayed.
+
+Logging to a file would benefit from write-behind, since small amounts of text
+are frequently written to a file, and it's more efficient to write all of those
+changes to disk at once rather than write to disk every time.
+
+Video games would benefit from buffer caching. Imagine a sound that's used in
+multiple places in a game. Instead of reading that sound from disk every time
+it's used, it makes more sense for the sound to be in the buffer cache, so it's
+replayed from memory, not the disk.
+
+			   SURVEY QUESTIONS
+			   ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the feedback survey on the course
+website.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students in future quarters?
+
+>> Any other comments?
+
