@@ -40,24 +40,35 @@ bool free_map_index_allocate(int sectors, struct inode_disk* inode_disk_) {
 	block_sector_t *sectorp = idx2block_sectorp(sector_idx, inode_disk_);
 	block_sector_t sector = bitmap_scan_and_flip(free_map, 0, 1, false);
 
-	// If we fail to get a sector, free all previously obtained sectors
-	// and return false
-	if (sector == BITMAP_ERROR
-	    || free_map_file == NULL
-	    || !bitmap_write(free_map, free_map_file)) {
-	    // TODO(jg): Error, free all previously set sectors
+	if (sector != BITMAP_ERROR && free_map_file != NULL &&
+	    !bitmap_write(free_map, free_map_file)) {
+	    // We found a free sector, the free_map_file exists,
+	    // but we could not write the free_map to the free_map file
+
+	    // So we set the block we found to free again and indicate error
+	    bitmap_set_multiple(free_map, sector, 1, false);
+	    sector = BITMAP_ERROR;
+	}
+
+	// If we encountered no errors finding a free sector,
+	// put the sector number into the index and move on to
+	// allocating the next sector
+	if (sector != BITMAP_ERROR) {
+	    *sectorp = sector;
+	    continue;
+	}
+
+	// If we did encounter an error, deallocate all of the sectors we have
+	// allocated so far in this function and return an error.
+	if (sector == BITMAP_ERROR) {
 	    int sector_idx_to_clear;
 	    for (sector_idx_to_clear = 0;
-		 sector_idx_to_clear <= sector_idx;
+		 sector_idx_to_clear < sector_idx;
 		 ++sector_idx_to_clear) {
 		bitmap_set_multiple(free_map, idx2block_sector(sector_idx, inode_disk_), 1, false);
-		// TODO(jg): should we overwrite now-bad sectors in our index with -1 or something?
 	    }
 	    return false;
-        } 
-
-	// Not bitmap error, free_map_file != NULL, bitmap_write successful
-	*sectorp = sector;
+	}
     }
     // All sectors success
     return true;

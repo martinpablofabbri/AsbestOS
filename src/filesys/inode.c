@@ -63,10 +63,11 @@ struct inode {
     within INODE.
     Returns -1 if INODE does not contain data for a byte at offset
     POS. */
-static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
+static block_sector_t byte_to_sector(struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
     if (pos < inode->data.length)
-        return inode->data.start + pos / BLOCK_SECTOR_SIZE;
+        /* return inode->data.start + pos / BLOCK_SECTOR_SIZE; */
+	return offset2block_sector(pos, &inode->data);
     else
         return -1;
 }
